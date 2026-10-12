@@ -1,15 +1,17 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <GLFW/glfw3.h>
 
 namespace AC_Engine
 {
     class FrameBuffer
     {
     public:
-        FrameBuffer(int width, int height);
+        FrameBuffer(GLFWwindow* window);
         ~FrameBuffer();
         void setPixel(int x, int y, unsigned int color);
+        void update();
         void clear();
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
@@ -19,5 +21,6 @@ namespace AC_Engine
         int m_width;
         int m_height;
         std::vector<unsigned int> m_prixels;
+        GLFWwindow* m_window;
     };
 }
