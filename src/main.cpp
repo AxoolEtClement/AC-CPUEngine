@@ -10,12 +10,13 @@ int main() {
     
 
     // Main loop
-    while (!window.shouldClose()) {
+    while (!window.shouldClose()) 
+    {
+        frameBuffer.update(); // Update the framebuffer in case the window size has changed
         renderer.drawLine(100, 100, 200, 200, 0xFFFFFFFF); // Draw a white line
         renderer.drawLine(200, 200, 300, 100, 0xFF00FF00); // Draw a green line
         renderer.drawLine(300, 100, 100, 100, 0x000000FF); // Draw a red line
         glDrawPixels( frameBuffer.getWidth(), frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels() );
-        frameBuffer.update(); // Update the framebuffer in case the window size has changed
         window.swapBuffers();
         window.pollEvents();
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 #include <GLFW/glfw3.h>
 
 namespace AC_Engine
@@ -20,7 +21,7 @@ namespace AC_Engine
     private:
         int m_width;
         int m_height;
-        std::vector<unsigned int> m_prixels;
+        std::vector<uint32_t> m_prixels;
         GLFWwindow* m_window;
     };
 }
