@@ -20,8 +20,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glfw)
 
 
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 
 add_executable(AC-CPUEngine ${SOURCES} ${HEADERS})
-target_link_libraries(AC-CPUEngine glfw)
+target_include_directories(AC-CPUEngine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+find_package(OpenGL REQUIRED)
+target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL)
