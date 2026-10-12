@@ -27,15 +27,11 @@ namespace AC_Engine
     {
         // This function can be used to update the framebuffer if needed.
         glfwGetFramebufferSize(m_window, &m_width, &m_height);
-        m_prixels.resize(m_width * m_height, 0);
-        for (std::size_t i = 0; i < m_prixels.size(); ++i) 
-        {
-            m_prixels[i] = 0x00FF0000; // Set all pixels to opaque blue for framebuffer size testing
-        }
+        m_prixels.resize(m_width * m_height);
     }
 
     void FrameBuffer::clear()
     {
-        std::fill(m_prixels.begin(), m_prixels.end(), 0);
+        std::fill(m_prixels.begin(), m_prixels.end(), m_clearColor ? m_clearColor : 0x00000000);
     }
 }
