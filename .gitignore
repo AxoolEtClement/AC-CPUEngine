@@ -1,6 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/cmake,c++,visualstudio,visualstudiocode,ninja
 # Edit at https://www.toptal.com/developers/gitignore?templates=cmake,c++,visualstudio,visualstudiocode,ninja
 
+### CMake ##
+build/
+external_libs/
+
 ### C++ ###
 # Prerequisites
 *.d
