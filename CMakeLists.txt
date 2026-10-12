@@ -24,4 +24,6 @@ file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 
 add_executable(AC-CPUEngine ${SOURCES} ${HEADERS})
-target_link_libraries(AC-CPUEngine glfw)
+
+find_package(OpenGL REQUIRED)
+target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL)
