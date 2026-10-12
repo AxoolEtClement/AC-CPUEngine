@@ -13,12 +13,13 @@ int main() {
     while (!window.shouldClose()) 
     {
         frameBuffer.update(); // Update the framebuffer in case the window size has changed
-        renderer.drawLine(100, 100, 200, 200, 0xFFFFFFFF); // Draw a white line
-        renderer.drawLine(200, 200, 300, 100, 0xFF00FF00); // Draw a green line
-        renderer.drawLine(300, 100, 100, 100, 0x000000FF); // Draw a red line
+        renderer.drawDemoRGBTriangle(frameBuffer.getWidth() / 2, 0,  frameBuffer.getWidth() - 1, frameBuffer.getHeight() - 1,  0, frameBuffer.getHeight() - 1);  // Draw a demo RGB triangle
+        glViewport(0, 0, frameBuffer.getWidth(), frameBuffer.getHeight());
+        glRasterPos2f(-1.0f, 1.0f);   // coin haut-gauche de la fenêtre
+        glPixelZoom(1.0f, -1.0f);     // dessine vers le bas
         glDrawPixels( frameBuffer.getWidth(), frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels() );
         window.swapBuffers();
         window.pollEvents();
-
+        frameBuffer.clear();
     }
 }
