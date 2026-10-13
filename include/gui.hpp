@@ -10,6 +10,11 @@
 
 namespace AC_Engine
 {
+    class FrameBuffer;
+}
+
+namespace AC_Engine
+{
     /**
      * @brief A class for managing the GUI using ImGui.
      */
@@ -20,23 +25,19 @@ namespace AC_Engine
          * @brief Initializes the GUI with the given GLFW window.
          * @param window A pointer to the GLFW window.
          */
-        static void init(GLFWwindow* window);
+        void init(GLFWwindow* window);
         /**
          * @brief Begins a new frame.
          */
         void newFrame();
         /**
-         * @brief Displays the GUI windows.
-         */
-        void windows();
-        /**
          * @brief Renders the GUI.
          */
-        void render();
+        void render(const FrameBuffer& frameBuffer);
         /**
          * @brief Shuts down the GUI.
          */
-        static void shutdown();
+        void shutdown();
 
     private:
         /**
@@ -55,5 +56,6 @@ namespace AC_Engine
          * @brief A history of FPS values for calculating the average FPS.
          */
         std::vector<float> m_fpsHistory;
+        unsigned int m_sceneTexture = 0;
     };
 }
