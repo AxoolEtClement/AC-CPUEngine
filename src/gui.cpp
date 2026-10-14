@@ -31,7 +31,7 @@ namespace AC_Engine
 
     void gui::newFrame()
     {
-        m_startTime = std::chrono::high_resolution_clock::now();
+        m_startTime = std::chrono::steady_clock::now();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -43,18 +43,19 @@ namespace AC_Engine
 
     void gui::render(const FrameBuffer& frameBuffer)
     {
-        m_endTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> deltaTime = m_endTime - m_startTime;
-        m_deltaTime = deltaTime.count();
-
+        using namespace std::chrono;
+        static float lastFps = 60;
+        
         // Update FPS history
-        if (m_fpsHistory.size() >= 100) {
-            m_fpsHistory.erase(m_fpsHistory.begin());
+        m_endTime = steady_clock::now();
+        if (m_deltaTime += duration_cast<milliseconds>(m_endTime - m_startTime).count();
+            m_deltaTime >= 10) {
+            lastFps = 1.0f / (m_deltaTime * 0.001f);
+            m_deltaTime = 0;
         }
-        m_fpsHistory.push_back(1.0f / m_deltaTime);
 
         // Calculate average FPS
-        float averageFPS = std::accumulate(m_fpsHistory.begin(), m_fpsHistory.end(), 0.0f) / m_fpsHistory.size();
+        float averageFPS = lastFps;//std::accumulate(m_fpsHistory.begin(), m_fpsHistory.end(), 0.0f) / m_fpsHistory.size();
 
         // Display FPS in a window
         ImGui::Begin("Performance");
@@ -75,7 +76,7 @@ namespace AC_Engine
                                      availableSize.y / static_cast<float>(height));
         const ImVec2 imageSize(width * scale, height * scale);
         ImGui::Image(static_cast<ImTextureID>(m_sceneTexture), imageSize,
-                     ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                     ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
         ImGui::End();
 
         // Render the GUI
