@@ -31,7 +31,6 @@ namespace AC_Engine
 
     void gui::newFrame()
     {
-        m_startTime = std::chrono::high_resolution_clock::now();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -43,22 +42,9 @@ namespace AC_Engine
 
     void gui::render(const FrameBuffer& frameBuffer)
     {
-        m_endTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> deltaTime = m_endTime - m_startTime;
-        m_deltaTime = deltaTime.count();
-
-        // Update FPS history
-        if (m_fpsHistory.size() >= 100) {
-            m_fpsHistory.erase(m_fpsHistory.begin());
-        }
-        m_fpsHistory.push_back(1.0f / m_deltaTime);
-
-        // Calculate average FPS
-        float averageFPS = std::accumulate(m_fpsHistory.begin(), m_fpsHistory.end(), 0.0f) / m_fpsHistory.size();
-
         // Display FPS in a window
         ImGui::Begin("Performance");
-        ImGui::Text("Average FPS: %.1f", averageFPS);
+        ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
         ImGui::End();
 
         // Display the scene in a window
