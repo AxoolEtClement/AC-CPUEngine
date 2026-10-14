@@ -1,6 +1,8 @@
 #pragma once
 #include "frameBuffer.hpp"
 #include <math.h>
+#include "Mat4x4.hpp"
+#include "Vec4.hpp"
 
 namespace AC_Engine
 {
@@ -11,7 +13,7 @@ namespace AC_Engine
         ~Renderer() = default;
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
-        void drawDemoRGBTriangle(int x0, int y0, int x1, int y1, int x2, int y2);
+        void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
     private:
         FrameBuffer& m_frameBuffer;
     };
