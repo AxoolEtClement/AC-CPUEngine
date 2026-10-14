@@ -39,6 +39,10 @@ namespace AC_Engine
          */
         void shutdown();
 
+    public:
+        int getSceneWidth() const { return m_sceneWidth; }
+        int getSceneHeight() const { return m_sceneHeight; }
+
     private:
         /**
          * @brief The delta time between frames.
@@ -55,7 +59,9 @@ namespace AC_Engine
         /**
          * @brief A history of FPS values for calculating the average FPS.
          */
-        std::vector<float> m_fpsHistory;
+
         unsigned int m_sceneTexture = 0;
+        int m_sceneWidth = 640;
+        int m_sceneHeight = 480;
     };
 }

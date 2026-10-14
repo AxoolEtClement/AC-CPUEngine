@@ -48,20 +48,30 @@ namespace AC_Engine
         ImGui::End();
 
         // Display the scene in a window
-        ImGui::Begin("Scene");
-        const int width = frameBuffer.getWidth();
-        const int height = frameBuffer.getHeight();
-        glBindTexture(GL_TEXTURE_2D, m_sceneTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels());
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        const ImVec2 availableSize = ImGui::GetContentRegionAvail();
-        const float scale = std::min(availableSize.x / static_cast<float>(width),
-                                     availableSize.y / static_cast<float>(height));
-        const ImVec2 imageSize(width * scale, height * scale);
-        ImGui::Image(static_cast<ImTextureID>(m_sceneTexture), imageSize,
-                     ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        const bool sceneVisible = ImGui::Begin("Scene", nullptr,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleVar();
+        
+        if (sceneVisible)
+        {
+            // Taille disponible dans la fenêtre : sera utilisée par le framebuffer à la frame suivante
+            const ImVec2 avail = ImGui::GetContentRegionAvail();
+            m_sceneWidth  = std::max(1, static_cast<int>(avail.x));
+            m_sceneHeight = std::max(1, static_cast<int>(avail.y));
+        
+            const int width = frameBuffer.getWidth();
+            const int height = frameBuffer.getHeight();
+            glBindTexture(GL_TEXTURE_2D, m_sceneTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels());
+            glBindTexture(GL_TEXTURE_2D, 0);
+            
+            // Affichage 1:1 (le framebuffer a la taille de la zone)
+            ImGui::Image(static_cast<ImTextureID>(m_sceneTexture),
+                         ImVec2(static_cast<float>(m_sceneWidth), static_cast<float>(m_sceneHeight)),
+                         ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+        }
         ImGui::End();
 
         // Render the GUI
