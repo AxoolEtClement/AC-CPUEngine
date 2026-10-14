@@ -24,29 +24,34 @@ namespace AC_Engine
     void Renderer::drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t)
     {
         simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationZ(t) };
-
+		simd::Matrix4x4 translation{ simd::Matrix4x4::Translation(simd::Vec3f{ 320.f, 240.f, 0.f }) };
+    
         v0 = rotation * v0;
         v1 = rotation * v1;
         v2 = rotation * v2;
 
-        int x0{ static_cast<int>(v0.getX()) };
-        int x1{ static_cast<int>(v1.getX()) };
-        int x2{ static_cast<int>(v2.getX()) };
+		simd::Vec4 transformedV0 = translation * v0;
+		simd::Vec4 transformedV1 = translation * v1;
+		simd::Vec4 transformedV2 = translation * v2;
 
-        int y0{ static_cast<int>(v0.getY()) };
-        int y1{ static_cast<int>(v1.getY()) };
-        int y2{ static_cast<int>(v2.getY()) };
+        int x0{ static_cast<int>(transformedV0.getX()) };
+        int x1{ static_cast<int>(transformedV1.getX()) };
+        int x2{ static_cast<int>(transformedV2.getX()) };
 
+        int y0{ static_cast<int>(transformedV0.getY()) };
+        int y1{ static_cast<int>(transformedV1.getY()) };
+        int y2{ static_cast<int>(transformedV2.getY()) };
 
-        auto pack = [](float r, float g, float b) -> uint32_t {
-            auto c = [](float v) { return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
-            return 0xFF000000u | (c(b) << 16) | (c(g) << 8) | c(r);
+        auto edge = [](int x0, int y0, int x1, int y1, int x, int y) -> int {
+            return (y0 - y1) * (x - x1) + (x1 - x0) * (y - y1);
             };
 
-        int det = (y1 - y2) * ( - x2) + (x2 - x1) * (y0 - y2);
-        if (det == 0) return;
-        int s = (det > 0) ? 1 : -1;
-        float invDet = 1.0f / static_cast<float>(det * s);
+        auto pack = [](float r, float g, float b, float area) -> uint32_t {
+            return ((0xFF << 24) | static_cast<uint32_t>(r * 255 / area) << 16) | (static_cast<uint32_t>(g * 255 / area) << 8) | static_cast<uint32_t>(b * 255 / area);
+            };
+
+        int area = edge(x0, y0, x1, y1, x2, y2);
+        if (area <= 0) return;
 
         int minX = std::max(0, std::min({ x0, x1, x2 }));
         int maxX = std::min(m_frameBuffer.getWidth() - 1, std::max({ x0, x1, x2 }));
@@ -55,12 +60,12 @@ namespace AC_Engine
 
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
-                int n0 = s * ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2));
-                int n1 = s * ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2));
-                int n2 = det * s - n0 - n1;
+				int e0 = edge(x1, y1, x2, y2, x, y);
+				int e1 = edge(x2, y2, x0, y0, x, y);
+				int e2 = edge(x0, y0, x1, y1, x, y);
 
                 if ((n0 | n1 | n2) >= 0) {
-                    m_frameBuffer.setPixel(x, y, pack(n0 * invDet, n1 * invDet, n2 * invDet));
+                    m_frameBuffer.setPixel(x, y, pack(e0, e1, e2, area));
                 }
             }
         }
