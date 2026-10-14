@@ -47,11 +47,11 @@ namespace AC_Engine
         /**
          * @brief The start time of the frame.
          */
-        std::chrono::high_resolution_clock::time_point m_startTime;
+        std::chrono::steady_clock::time_point m_startTime;
         /**
          * @brief The end time of the frame.
          */
-        std::chrono::high_resolution_clock::time_point m_endTime;
+        std::chrono::steady_clock::time_point m_endTime;
         /**
          * @brief A history of FPS values for calculating the average FPS.
          */

@@ -61,7 +61,7 @@ namespace AC_Engine
                                      availableSize.y / static_cast<float>(height));
         const ImVec2 imageSize(width * scale, height * scale);
         ImGui::Image(static_cast<ImTextureID>(m_sceneTexture), imageSize,
-                     ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                     ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
         ImGui::End();
 
         // Render the GUI
