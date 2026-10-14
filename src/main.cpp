@@ -2,7 +2,7 @@
 #include "frameBuffer.hpp"
 #include "renderer.hpp"
 #include "gui.hpp"
-#include "Mat4x4.hpp"
+#include "Vec4.hpp"
 
 int main() {
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
@@ -11,14 +11,20 @@ int main() {
     AC_Engine::gui gui;
     gui.init(window.getWindow());
 
-    simd::Matrix4x4 mat;
+    simd::Vec4 v0{ 200.f, 0.f, 0.f, 0.f };
+    simd::Vec4 v1{ 100.f, 200.f, 0.f, 0.f };
+    simd::Vec4 v2{ 300.f, 200.f, 0.f, 0.f };
+
     // Main loop
     while (!window.shouldClose()) 
     {
         window.pollEvents();
         gui.newFrame();
         frameBuffer.update(); // Update the framebuffer in case the window size has changed
-        renderer.drawDemoRGBTriangle(frameBuffer.getWidth() / 2, 0,  frameBuffer.getWidth() - 1, frameBuffer.getHeight() - 1,  0, frameBuffer.getHeight() - 1);  // Draw a demo RGB triangle
+
+
+
+        renderer.drawDemoRGBTriangle(v0, v1, v2, 0.174533f);  // Draw a demo RGB triangle
         gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();
