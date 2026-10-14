@@ -2,6 +2,7 @@
 #include "frameBuffer.hpp"
 #include "renderer.hpp"
 #include "gui.hpp"
+#include "Mat4x4.hpp"
 
 int main() {
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
@@ -10,6 +11,7 @@ int main() {
     AC_Engine::gui gui;
     gui.init(window.getWindow());
 
+    simd::Matrix4x4 mat;
     // Main loop
     while (!window.shouldClose()) 
     {
