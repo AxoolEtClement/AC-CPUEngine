@@ -2,9 +2,8 @@
 
 namespace AC_Engine
 {
-    FrameBuffer::FrameBuffer(GLFWwindow* window) : m_window(window)
+    FrameBuffer::FrameBuffer(int width, int height) : m_width(width), m_height(height)
     {
-        glfwGetFramebufferSize(window, &m_width, &m_height);
         m_prixels.resize(m_width * m_height, 0);
 
         for (std::size_t i = 0; i < m_prixels.size(); ++i) 
@@ -23,10 +22,16 @@ namespace AC_Engine
         m_prixels[y * m_width + x] = color;
     }
 
-    void FrameBuffer::update()
+    void FrameBuffer::update(int width, int height)
     {
+        width = std::max(width, 1);   // évite une taille nulle (fenêtre réduite)
+        height = std::max(height, 1);
+        if (width == m_width && height == m_height) return;
+        
         // This function can be used to update the framebuffer if needed.
-        glfwGetFramebufferSize(m_window, &m_width, &m_height);
+        // For now, we'll just resize the pixel buffer to match the current framebuffer size.
+        m_width = width;
+        m_height = height;
         m_prixels.resize(m_width * m_height);
     }
 

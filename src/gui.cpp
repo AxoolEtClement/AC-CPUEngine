@@ -35,7 +35,6 @@ namespace AC_Engine
 
     void gui::newFrame()
     {
-        m_startTime = std::chrono::steady_clock::now();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -47,40 +46,36 @@ namespace AC_Engine
 
     void gui::render(const FrameBuffer& frameBuffer)
     {
-        using namespace std::chrono;
-        static float lastFps = 60;
-        
-        // Update FPS history
-        m_endTime = steady_clock::now();
-        if (m_deltaTime += duration_cast<milliseconds>(m_endTime - m_startTime).count();
-            m_deltaTime >= 10) {
-            lastFps = 1.0f / (m_deltaTime * 0.001f);
-            m_deltaTime = 0;
-        }
-
-        // Calculate average FPS
-        float averageFPS = lastFps;//std::accumulate(m_fpsHistory.begin(), m_fpsHistory.end(), 0.0f) / m_fpsHistory.size();
-
         // Display FPS in a window
         ImGui::Begin("Performance");
-        ImGui::Text("Average FPS: %.1f", averageFPS);
+        ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
         ImGui::End();
 
         // Display the scene in a window
-        ImGui::Begin("Scene");
-        const int width = frameBuffer.getWidth();
-        const int height = frameBuffer.getHeight();
-        glBindTexture(GL_TEXTURE_2D, m_sceneTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels());
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        const ImVec2 availableSize = ImGui::GetContentRegionAvail();
-        const float scale = std::min(availableSize.x / static_cast<float>(width),
-                                     availableSize.y / static_cast<float>(height));
-        const ImVec2 imageSize(width * scale, height * scale);
-        ImGui::Image(static_cast<ImTextureID>(m_sceneTexture), imageSize,
-                     ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        const bool sceneVisible = ImGui::Begin("Scene", nullptr,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleVar();
+        
+        if (sceneVisible)
+        {
+            // Taille disponible dans la fenêtre : sera utilisée par le framebuffer à la frame suivante
+            const ImVec2 avail = ImGui::GetContentRegionAvail();
+            m_sceneWidth  = std::max(1, static_cast<int>(avail.x));
+            m_sceneHeight = std::max(1, static_cast<int>(avail.y));
+        
+            const int width = frameBuffer.getWidth();
+            const int height = frameBuffer.getHeight();
+            glBindTexture(GL_TEXTURE_2D, m_sceneTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.getPixels());
+            glBindTexture(GL_TEXTURE_2D, 0);
+            
+            // Affichage 1:1 (le framebuffer a la taille de la zone)
+            ImGui::Image(static_cast<ImTextureID>(m_sceneTexture),
+                         ImVec2(static_cast<float>(m_sceneWidth), static_cast<float>(m_sceneHeight)),
+                         ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+        }
         ImGui::End();
 
         // Render the GUI

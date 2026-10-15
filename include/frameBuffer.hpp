@@ -9,10 +9,10 @@ namespace AC_Engine
     class FrameBuffer
     {
     public:
-        FrameBuffer(GLFWwindow* window);
+        FrameBuffer(int width, int height);
         ~FrameBuffer();
         void setPixel(int x, int y, unsigned int color);
-        void update();
+        void update(int width, int height);
         void clear();
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
@@ -23,6 +23,5 @@ namespace AC_Engine
         int m_height;
         std::vector<uint32_t> m_prixels;
         uint32_t m_clearColor = 0x00000000;
-        GLFWwindow* m_window;
     };
 }
