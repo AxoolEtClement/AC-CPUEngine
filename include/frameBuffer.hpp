@@ -22,7 +22,7 @@ namespace AC_Engine
         int m_width;
         int m_height;
         std::vector<uint32_t> m_prixels;
-        uint32_t m_clearColor = 0xFF0000FF;
+        uint32_t m_clearColor = 0xFF000000;
         GLFWwindow* m_window;
     };
 }
