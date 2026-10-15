@@ -1,6 +1,7 @@
 #pragma once
 #include "Mat4x4.hpp"
 #include "Vec4.hpp"
+#include <math.h>
 
 class Camera
 {

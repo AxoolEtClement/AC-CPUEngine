@@ -12,3 +12,19 @@ simd::Matrix4x4 Camera::look_at()
 		0.f, 0.f, 0.f, 1.f
 	} };
 }
+
+simd::Matrix4x4 Camera::perspective(float fov, float aspect, float near, float far)
+{
+	float yScale = 1/std::tan(fov / 2);
+	float xScale = yScale / aspect;
+
+	float A = (far + near) / (near - far);
+	float B = (2 * far * near) / (near - far);
+
+	return simd::Matrix4x4{{
+		xScale, 0.f, 0.f, 0.f,
+		0.f, yScale, 0.f, 0.f,
+		0.f, 0.f, A, B,
+		0.f, 0.f, -1.f, 0.f
+	}};
+}
