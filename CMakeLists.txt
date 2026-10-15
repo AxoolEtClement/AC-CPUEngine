@@ -30,7 +30,15 @@ FetchContent_Declare(
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external_libs/imgui
 )
 
-FetchContent_MakeAvailable(glfw imgui)
+FetchContent_Declare(
+    AC-Math
+    GIT_REPOSITORY https://github.com/AxoolEtClement/AC-Math.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external_libs/AC-Math
+)
+
+FetchContent_MakeAvailable(glfw imgui AC-Math)
 
 find_package(OpenGL REQUIRED)
 
@@ -45,11 +53,17 @@ target_include_directories(imgui PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
+# imgui n'a pas besoin de la lib math
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+)
 
 add_executable(AC-CPUEngine ${SOURCES} ${HEADERS})
 target_include_directories(AC-CPUEngine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL imgui)
+
+# mathLibCPP est la vraie cible de la lib (elle propage mathLibSIMD et ses includes)
+target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL imgui mathLibSIMD)

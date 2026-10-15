@@ -2,6 +2,8 @@
 #include "frameBuffer.hpp"
 #include "renderer.hpp"
 #include "gui.hpp"
+#include "Vec4.hpp"
+#include "camera.hpp"
 
 int main() {
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
@@ -10,13 +12,34 @@ int main() {
     AC_Engine::gui gui;
     gui.init(window.getWindow());
 
+    simd::Vec4 v0{ -1, -1, -1, 1 };
+    simd::Vec4 v1{ 1, -1, -1, 1 };
+    simd::Vec4 v2{ 1,  1, -1, 1 };
+    simd::Vec4 v3{ -1,  1, -1, 1 };
+    simd::Vec4 v4{ -1, -1,  1, 1 };
+    simd::Vec4 v5{ 1, -1,  1, 1 };
+    simd::Vec4 v6{ 1,  1,  1, 1 };
+    simd::Vec4 v7{ -1,  1,  1, 1 };
+
+    Camera cam{};
+
+    std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges{
+        {v0, v1}, {v3, v2}, {v7, v6}, {v4, v5},
+        {v0, v3}, {v1, v2}, {v5, v6}, {v4, v7},
+        {v0, v4}, {v1, v5}, {v2, v6}, {v3, v7}
+    };
+
+    simd::Matrix4x4 model{};
+    simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
+
     // Main loop
     while (!window.shouldClose()) 
     {
+        model *= rotation;
         window.pollEvents();
         gui.newFrame();
         frameBuffer.update(gui.getSceneWidth(), gui.getSceneHeight()); // Update the framebuffer in case the window size has changed
-        renderer.drawDemoRGBTriangle(frameBuffer.getWidth() / 2, 0,  frameBuffer.getWidth() - 1, frameBuffer.getHeight() - 1,  0, frameBuffer.getHeight() - 1);  // Draw a demo RGB triangle
+        renderer.renderObjectsWireframe(edges, cam, model);
         gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();

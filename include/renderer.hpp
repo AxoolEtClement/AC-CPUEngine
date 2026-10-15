@@ -1,6 +1,11 @@
 #pragma once
 #include "frameBuffer.hpp"
 #include <math.h>
+#include "Mat4x4.hpp"
+#include "Vec4.hpp"
+#include "renderObject.hpp"
+#include <vector>
+#include "camera.hpp"
 
 namespace AC_Engine
 {
@@ -11,7 +16,8 @@ namespace AC_Engine
         ~Renderer() = default;
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
-        void drawDemoRGBTriangle(int x0, int y0, int x1, int y1, int x2, int y2);
+        void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
+        void renderObjectsWireframe(std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges, Camera cam, simd::Matrix4x4 model);
     private:
         FrameBuffer& m_frameBuffer;
     };
