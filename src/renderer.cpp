@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include <iostream>
 
 namespace AC_Engine
 {
@@ -68,6 +69,36 @@ namespace AC_Engine
                     m_frameBuffer.setPixel(x, y, pack(e0, e1, e2, area));
                 }
             }
+        }
+    }
+
+    void Renderer::renderObjectsWireframe(std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges, Camera cam, simd::Matrix4x4 model)
+    {
+        simd::Matrix4x4 MVP{ cam.perspective() * cam.look_at() * model };
+        
+        for (const auto& obj : edges)
+        {
+            simd::Vec4 v0clip{ MVP * obj.first };
+            simd::Vec4 v1clip{ MVP * obj.second };
+
+            if (v0clip.getW() <= 0.0001f || v1clip.getW() <= 0.0001f)
+            {
+                continue;
+            }
+
+            float ndc_x0 = v0clip.getX() / v0clip.getW();
+            float ndc_y0 = v0clip.getY() / v0clip.getW();
+
+            float ndc_x1 = v1clip.getX() / v1clip.getW();
+            float ndc_y1 = v1clip.getY() / v1clip.getW();
+
+            int screen_x0 = static_cast<int>((ndc_x0 + 1.f) * 0.5 * m_frameBuffer.getWidth());
+            int screen_y0 = static_cast<int>((1.f - (ndc_y0 + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
+
+            int screen_x1 = static_cast<int>((ndc_x1 + 1.f) * 0.5 * m_frameBuffer.getWidth());
+            int screen_y1 = static_cast<int>((1.f - (ndc_y1 + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
+
+            drawLine(screen_x0, screen_y0, screen_x1, screen_y1, 0xFFFFFFFF);
         }
     }
 }
