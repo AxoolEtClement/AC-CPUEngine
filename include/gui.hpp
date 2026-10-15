@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <implot.h>
 #include <GLFW/glfw3.h>
 #include <string>
 #include <chrono>
@@ -65,6 +66,7 @@ namespace AC_Engine
         /**
          * @brief A history of FPS values for calculating the average FPS.
          */
+        std::vector<float> m_fpsHistory;
 
         unsigned int m_sceneTexture = 0;
         int m_sceneWidth = 640;

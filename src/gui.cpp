@@ -11,6 +11,7 @@ namespace AC_Engine
     {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImPlot::CreateContext();
         ImGui::LoadIniSettingsFromDisk("../config/imguiDefaultLayout.ini");
         ImGuiIO& io = ImGui::GetIO();
         ImGui::StyleColorsDark();
@@ -50,6 +51,17 @@ namespace AC_Engine
         // Display FPS in a window
         ImGui::Begin("Performance");
         ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+        m_fpsHistory.push_back(ImGui::GetIO().Framerate);
+        if (m_fpsHistory.size() > 100)
+            m_fpsHistory.erase(m_fpsHistory.begin());
+        if (ImPlot::BeginPlot("FPS History", ImVec2(-1, 150)))
+        {
+            ImPlot::SetupAxes("Frame", "FPS");
+            ImPlot::SetupAxisLimits(ImAxis_X1, 0, 100, ImPlotCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 200, ImPlotCond_Always);
+            ImPlot::PlotLine("FPS", m_fpsHistory.data(), static_cast<int>(m_fpsHistory.size()));
+            ImPlot::EndPlot();
+        }
         ImGui::ColorPicker4("Clear Color", m_clearColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::End();
 
@@ -102,6 +114,7 @@ namespace AC_Engine
         }
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 }
