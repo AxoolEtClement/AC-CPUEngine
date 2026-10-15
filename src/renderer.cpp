@@ -44,7 +44,7 @@ namespace AC_Engine
                 int n1 = s * ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2));
                 int n2 = det * s - n0 - n1;
 
-                if (n0 >= 0 && n1 >= 0 && n2 >= 0) {
+                if ((n0 | n1 | n2) >= 0) {
                     m_frameBuffer.setPixel(x, y, pack(n0 * invDet, n1 * invDet, n2 * invDet));
                 }
             }
