@@ -11,6 +11,7 @@ namespace AC_Engine
     {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImGui::LoadIniSettingsFromDisk("../config/imguiDefaultLayout.ini");
         ImGuiIO& io = ImGui::GetIO();
         ImGui::StyleColorsDark();
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
@@ -49,6 +50,7 @@ namespace AC_Engine
         // Display FPS in a window
         ImGui::Begin("Performance");
         ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+        ImGui::ColorPicker4("Clear Color", m_clearColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::End();
 
         // Display the scene in a window

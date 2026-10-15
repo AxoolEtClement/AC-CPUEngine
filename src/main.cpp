@@ -15,7 +15,7 @@ int main() {
     {
         window.pollEvents();
         gui.newFrame();
-        frameBuffer.update(gui.getSceneWidth(), gui.getSceneHeight()); // Update the framebuffer in case the window size has changed
+        frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
         renderer.drawDemoRGBTriangle(frameBuffer.getWidth() / 2, 0,  frameBuffer.getWidth() - 1, frameBuffer.getHeight() - 1,  0, frameBuffer.getHeight() - 1);  // Draw a demo RGB triangle
         gui.render(frameBuffer);
         window.swapBuffers();
