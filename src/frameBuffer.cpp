@@ -22,8 +22,15 @@ namespace AC_Engine
         m_prixels[y * m_width + x] = color;
     }
 
-    void FrameBuffer::update(int width, int height)
+    void FrameBuffer::update(int width, int height, float clearColor[4])
     {
+        if (clearColor) {
+            m_clearColor = (static_cast<uint32_t>(clearColor[0] * 255) << 24) |
+                           (static_cast<uint32_t>(clearColor[1] * 255) << 16) |
+                           (static_cast<uint32_t>(clearColor[2] * 255) << 8) |
+                           (static_cast<uint32_t>(clearColor[3] * 255));
+        }
+
         width = std::max(width, 1);   // évite une taille nulle (fenêtre réduite)
         height = std::max(height, 1);
         if (width == m_width && height == m_height) return;
