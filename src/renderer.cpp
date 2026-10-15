@@ -64,7 +64,7 @@ namespace AC_Engine
 				int e1 = edge(x2, y2, x0, y0, x, y);
 				int e2 = edge(x0, y0, x1, y1, x, y);
 
-                if ((n0 | n1 | n2) >= 0) {
+                if ((e0 | e1 | e2) >= 0) {
                     m_frameBuffer.setPixel(x, y, pack(e0, e1, e2, area));
                 }
             }
