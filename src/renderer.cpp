@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include <iostream>
 
 namespace AC_Engine
 {
@@ -21,33 +22,83 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::drawDemoRGBTriangle(int x0, int y0, int x1, int y1, int x2, int y2)
+    void Renderer::drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t)
     {
-        auto pack = [](float r, float g, float b) -> uint32_t {
-            auto c = [](float v) { return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
-            return 0xFF000000u | (c(b) << 16) | (c(g) << 8) | c(r);
-        };
+        simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationZ(t) };
+		simd::Matrix4x4 translation{ simd::Matrix4x4::Translation(simd::Vec3f{ 320.f, 240.f, 0.f }) };
+    
+        v0 = rotation * v0;
+        v1 = rotation * v1;
+        v2 = rotation * v2;
 
-        int det = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
-        if (det == 0) return;
-        int s = (det > 0) ? 1 : -1;
-        float invDet = 1.0f / static_cast<float>(det * s);
+		simd::Vec4 transformedV0 = translation * v0;
+		simd::Vec4 transformedV1 = translation * v1;
+		simd::Vec4 transformedV2 = translation * v2;
 
-        int minX = std::max(0, std::min({x0, x1, x2}));
-        int maxX = std::min(m_frameBuffer.getWidth()  - 1, std::max({x0, x1, x2}));
-        int minY = std::max(0, std::min({y0, y1, y2}));
-        int maxY = std::min(m_frameBuffer.getHeight() - 1, std::max({y0, y1, y2}));
+        int x0{ static_cast<int>(transformedV0.getX()) };
+        int x1{ static_cast<int>(transformedV1.getX()) };
+        int x2{ static_cast<int>(transformedV2.getX()) };
+
+        int y0{ static_cast<int>(transformedV0.getY()) };
+        int y1{ static_cast<int>(transformedV1.getY()) };
+        int y2{ static_cast<int>(transformedV2.getY()) };
+
+        auto edge = [](int x0, int y0, int x1, int y1, int x, int y) -> int {
+            return (y0 - y1) * (x - x1) + (x1 - x0) * (y - y1);
+            };
+
+        auto pack = [](float r, float g, float b, float area) -> uint32_t {
+            return ((0xFF << 24) | static_cast<uint32_t>(r * 255 / area) << 16) | (static_cast<uint32_t>(g * 255 / area) << 8) | static_cast<uint32_t>(b * 255 / area);
+            };
+
+        int area = edge(x0, y0, x1, y1, x2, y2);
+        if (area <= 0) return;
+
+        int minX = std::max(0, std::min({ x0, x1, x2 }));
+        int maxX = std::min(m_frameBuffer.getWidth() - 1, std::max({ x0, x1, x2 }));
+        int minY = std::max(0, std::min({ y0, y1, y2 }));
+        int maxY = std::min(m_frameBuffer.getHeight() - 1, std::max({ y0, y1, y2 }));
 
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
-                int n0 = s * ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2));
-                int n1 = s * ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2));
-                int n2 = det * s - n0 - n1;
+				int e0 = edge(x1, y1, x2, y2, x, y);
+				int e1 = edge(x2, y2, x0, y0, x, y);
+				int e2 = edge(x0, y0, x1, y1, x, y);
 
-                if ((n0 | n1 | n2) >= 0) {
-                    m_frameBuffer.setPixel(x, y, pack(n0 * invDet, n1 * invDet, n2 * invDet));
+                if ((e0 | e1 | e2) >= 0) {
+                    m_frameBuffer.setPixel(x, y, pack(e0, e1, e2, area));
                 }
             }
+        }
+    }
+
+    void Renderer::renderObjectsWireframe(std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges, Camera cam, simd::Matrix4x4 model)
+    {
+        simd::Matrix4x4 MVP{ cam.perspective() * cam.look_at() * model };
+        
+        for (const auto& obj : edges)
+        {
+            simd::Vec4 v0clip{ MVP * obj.first };
+            simd::Vec4 v1clip{ MVP * obj.second };
+
+            if (v0clip.getW() <= 0.0001f || v1clip.getW() <= 0.0001f)
+            {
+                continue;
+            }
+
+            float ndc_x0 = v0clip.getX() / v0clip.getW();
+            float ndc_y0 = v0clip.getY() / v0clip.getW();
+
+            float ndc_x1 = v1clip.getX() / v1clip.getW();
+            float ndc_y1 = v1clip.getY() / v1clip.getW();
+
+            int screen_x0 = static_cast<int>((ndc_x0 + 1.f) * 0.5 * m_frameBuffer.getWidth());
+            int screen_y0 = static_cast<int>((1.f - (ndc_y0 + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
+
+            int screen_x1 = static_cast<int>((ndc_x1 + 1.f) * 0.5 * m_frameBuffer.getWidth());
+            int screen_y1 = static_cast<int>((1.f - (ndc_y1 + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
+
+            drawLine(screen_x0, screen_y0, screen_x1, screen_y1, 0xFFFFFFFF);
         }
     }
 }

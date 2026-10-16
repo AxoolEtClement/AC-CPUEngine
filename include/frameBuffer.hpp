@@ -22,6 +22,6 @@ namespace AC_Engine
         int m_width;
         int m_height;
         std::vector<uint32_t> m_prixels;
-        uint32_t m_clearColor = 0x00000000;
+        uint32_t m_clearColor = 0xFF000000;
     };
 }

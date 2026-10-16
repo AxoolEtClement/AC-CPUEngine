@@ -5,6 +5,8 @@
 build/
 external_libs/
 
+imgui.ini
+
 ### C++ ###
 # Prerequisites
 *.d

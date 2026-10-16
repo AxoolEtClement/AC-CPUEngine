@@ -54,7 +54,7 @@ namespace AC_Engine
         /**
          * @brief The delta time between frames.
          */
-        float m_deltaTime;
+        float m_deltaTime{};
         /**
          * @brief The start time of the frame.
          */
