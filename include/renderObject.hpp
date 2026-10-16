@@ -1,11 +1,11 @@
 #pragma once
 #include "Mat4x4.hpp"
-#include "Vec3f.hpp"
+#include "Vec4.hpp"
 #include <vector>
 
 struct Vertex
 {
-    simd::Vec3f pos;
+    simd::Vec4 pos;
 };
 
 struct renderObject

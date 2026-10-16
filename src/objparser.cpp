@@ -17,9 +17,10 @@ renderObject AC_Engine::ObjParser::parseObjFile(const std::string& filename)
             case 'v':
                 if (line[1] == ' ')
                 {
-                    obj.vertices.push_back({simd::Vec3f{std::stof(line.substr(2, line.find(' ', 2) - 2)),
+                    obj.vertices.push_back({simd::Vec4{std::stof(line.substr(2, line.find(' ', 2) - 2)),
                                                        std::stof(line.substr(line.find(' ', 2) + 1, line.find(' ', line.find(' ', 2) + 1) - line.find(' ', 2) - 1)),
-                                                       std::stof(line.substr(line.find_last_of(' ') + 1))}});
+                                                       std::stof(line.substr(line.find_last_of(' ') + 1)),
+                                                       1.0f}});
                 }
                 break;
             case 'f':
