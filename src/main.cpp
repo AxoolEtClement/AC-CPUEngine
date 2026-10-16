@@ -40,8 +40,8 @@ int main() {
         model *= rotation;
         window.pollEvents();
         gui.newFrame();
-        cam.getActiveCamera().updateInfos(gui.getSceneWidth(), gui.getSceneHeight(), 90.f, 0.1f, 100.f);
-        frameBuffer.update(gui.getSceneWidth(), gui.getSceneHeight(), gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
+        cam.getActiveCamera().updateInfos(gui.getFrameBufferData().width, gui.getFrameBufferData().height, 90.f, 0.1f, 100.f);
+        frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
         renderer.renderObjectsWireframe(edges, cam.getActiveCamera(), model);
         gui.render(frameBuffer);
         window.swapBuffers();
