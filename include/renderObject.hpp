@@ -1,3 +1,4 @@
+#pragma once
 #include "Mat4x4.hpp"
 #include "Vec3f.hpp"
 #include <vector>
@@ -10,7 +11,7 @@ struct Vertex
 struct renderObject
 {
     simd::Matrix4x4 modelMatrix{};
-    std::vector<Vertex> vectices{};
+    std::vector<Vertex> vertices{};
     std::vector<std::array<size_t, 3>> faces{};
 
     // TODO : add texture id ...

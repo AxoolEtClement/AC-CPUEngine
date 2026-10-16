@@ -4,6 +4,7 @@
 #include "gui.hpp"
 #include "Vec4.hpp"
 #include "cameraManager.hpp"
+#include "objparser.hpp"
 #include <iostream>
 
 int main() {
@@ -34,6 +35,10 @@ int main() {
     simd::Matrix4x4 model{};
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
+    renderObject obj = AC_Engine::ObjParser::parseObjFile("../assets/spot.obj");
+
+    std::cout << "Vertices: " << obj.vertices.size() << std::endl;
+    std::cout << "Faces: " << obj.faces.size() << std::endl;
     // Main loop
     while (!window.shouldClose()) 
     {
