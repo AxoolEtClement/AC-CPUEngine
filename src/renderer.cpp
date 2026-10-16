@@ -197,7 +197,7 @@ namespace AC_Engine
     void Renderer::drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2)
     {
         int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
-        if (area == 0.f) return;
+        if (area <= 0.f) return;
 
         int minX = std::max(0, std::min({ x0, x1, x2 }));
         int maxX = std::min(m_frameBuffer.getWidth() - 1, std::max({ x0, x1, x2 }));
