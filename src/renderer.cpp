@@ -72,11 +72,67 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjectsWireframe(std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges, Camera cam, simd::Matrix4x4 model)
+    void Renderer::renderObjectsWireframe(std::vector <renderObject> renderObjects, Camera cam)
     {
-        simd::Matrix4x4 MVP{ cam.perspective() * cam.look_at() * model };
+        int width = m_frameBuffer.getWidth();
+        int height = m_frameBuffer.getHeight();
+
+        simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
+        for (const auto& obj : renderObjects) {
+            std::vector<simd::Vec3f> verticesNdc;
+            std::vector<bool> visible;
+            simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
+            float dmin = 1e30f, dmax = -1e30f;
+
+            for (const auto& vertex : obj.vertices)
+            {
+                simd::Vec4 clip{ MVP * vertex.pos };
+                if (clip.getW() > 0.0001f)
+                {
+                    visible.push_back(true);
+                    float ndc_x = clip.getX() / clip.getW();
+                    float ndc_y = clip.getY() / clip.getW();
+
+                    verticesNdc.push_back({ ndc_x, ndc_y, clip.getW() });
+                } 
+                else
+                {
+                    visible.push_back(false);
+                    verticesNdc.push_back({});
+                }
+                if (clip.getW() < dmin) dmin = clip.getW();
+                if (clip.getW() > dmax) dmax = clip.getW();
+            }
+            float drange = (dmax > dmin) ? (dmax - dmin) : 1.0f;
+            for (const auto& face : obj.faces) {
+                if (visible[face[0]] || visible[face[1]] || visible[face[2]]) continue;
+                simd::Vec3f& v0 = verticesNdc[face[0]];
+                simd::Vec3f& v1 = verticesNdc[face[1]];
+                simd::Vec3f& v2 = verticesNdc[face[2]];
+
+                float avgDepth = (v0.getZ() + v1.getZ() + v2.getZ()) / 3.f;
+                float normalizedDepth = (avgDepth - dmin) / drange;
+
+                uint8_t level = 240 - static_cast<uint8_t>(normalizedDepth * 200);
+
+                uint32_t color = 0xFF000000 | (level << 16) | (level << 8) | (level);
+
+                int screen_x0 = static_cast<int>((v0.getX() + 1.0f) * 0.5f * width);
+                int screen_y0 = static_cast<int>((1.f - v0.getY()) * 0.5f * height);
+
+                int screen_x1 = static_cast<int>((v1.getX() + 1.0f) * 0.5f * width);
+                int screen_y1 = static_cast<int>((1.f - v1.getY()) * 0.5f * height);
+
+                int screen_x2 = static_cast<int>((v2.getX() + 1.0f) * 0.5f * width);
+                int screen_y2 = static_cast<int>((1.f - v2.getY()) * 0.5f * height);
+
+                drawLine(screen_x0, screen_y0, screen_x1, screen_y1, color);
+                drawLine(screen_x0, screen_y0, screen_x2, screen_y2, color);
+                drawLine(screen_x2, screen_y2, screen_x1, screen_y1, color);
+            }
+        }
         
-        for (const auto& obj : edges)
+        /*for (const auto& obj : edges)
         {
             simd::Vec4 v0clip{ MVP * obj.first };
             simd::Vec4 v1clip{ MVP * obj.second };
@@ -99,6 +155,6 @@ namespace AC_Engine
             int screen_y1 = static_cast<int>((1.f - (ndc_y1 + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
 
             drawLine(screen_x0, screen_y0, screen_x1, screen_y1, 0xFFFFFFFF);
-        }
+        }*/
     }
 }

@@ -17,7 +17,7 @@ namespace AC_Engine
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
-        void renderObjectsWireframe(std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges, Camera cam, simd::Matrix4x4 model);
+        void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
     private:
         FrameBuffer& m_frameBuffer;
     };
