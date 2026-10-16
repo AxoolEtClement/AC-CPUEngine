@@ -10,7 +10,7 @@ public:
 	
 	simd::Matrix4x4 look_at();
 	simd::Matrix4x4 perspective();
-	simd::Vec3f pos{ 2.f, 2.f, 2.f };
+	simd::Vec3f pos{ 1.f, 1.f, 1.f };
 	void updateInfos(int width, int height, float fov, float near, float far)
 	{
 		this->fov = fov;

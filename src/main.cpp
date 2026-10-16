@@ -35,7 +35,7 @@ int main() {
         gui.newFrame();
         cam.getActiveCamera().updateInfos(gui.getFrameBufferData().width, gui.getFrameBufferData().height, 90.f, 0.1f, 100.f);
         frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
-        renderer.renderObjectsWireframe({obj}, cam.getActiveCamera());
+        renderer.renderObjects({obj}, cam.getActiveCamera());
         gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();
