@@ -3,7 +3,8 @@
 #include "renderer.hpp"
 #include "gui.hpp"
 #include "Vec4.hpp"
-#include "camera.hpp"
+#include "cameraManager.hpp"
+#include <iostream>
 
 int main() {
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
@@ -21,8 +22,9 @@ int main() {
     simd::Vec4 v6{ 1,  1,  1, 1 };
     simd::Vec4 v7{ -1,  1,  1, 1 };
 
-    Camera cam{};
-
+    AC_Engine::CameraManager cam{};
+    cam.createCamera(AC_Engine::FixedCamera{});
+    cam.setActiveCamera(0);
     std::vector <std::pair< simd::Vec4, simd::Vec4 >> edges{
         {v0, v1}, {v3, v2}, {v7, v6}, {v4, v5},
         {v0, v3}, {v1, v2}, {v5, v6}, {v4, v7},
@@ -39,7 +41,7 @@ int main() {
         window.pollEvents();
         gui.newFrame();
         frameBuffer.update(gui.getSceneWidth(), gui.getSceneHeight()); // Update the framebuffer in case the window size has changed
-        renderer.renderObjectsWireframe(edges, cam, model);
+        renderer.renderObjectsWireframe(edges, cam.getActiveCamera(), model);
         gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();

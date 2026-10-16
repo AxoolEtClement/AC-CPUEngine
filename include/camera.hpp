@@ -10,9 +10,10 @@ public:
 	
 	simd::Matrix4x4 look_at();
 	simd::Matrix4x4 perspective();
+	simd::Vec3f pos{ 2.f, 2.f, 2.f };
 
 private:
-	simd::Vec3f pos{ 2.f, 2.f, 2.f };
+	
 	simd::Vec3f forward{ -0.57735f, -0.57735f, -0.57735f };
 	const simd::Vec3f up{ 0.f, 1.f, 0.f };
 	float fov{ 90.f };
