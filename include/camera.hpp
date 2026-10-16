@@ -11,6 +11,13 @@ public:
 	simd::Matrix4x4 look_at();
 	simd::Matrix4x4 perspective();
 	simd::Vec3f pos{ 2.f, 2.f, 2.f };
+	void updateInfos(int width, int height, float fov, float near, float far)
+	{
+		this->fov = fov;
+		this->near = near;
+		this->far = far;
+		this->aspect = static_cast<float>(width) / static_cast<float>(height);
+	};
 
 private:
 	

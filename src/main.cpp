@@ -40,6 +40,7 @@ int main() {
         model *= rotation;
         window.pollEvents();
         gui.newFrame();
+        cam.getActiveCamera().updateInfos(gui.getSceneWidth(), gui.getSceneHeight(), 90.f, 0.1f, 100.f);
         frameBuffer.update(gui.getSceneWidth(), gui.getSceneHeight()); // Update the framebuffer in case the window size has changed
         renderer.renderObjectsWireframe(edges, cam.getActiveCamera(), model);
         gui.render(frameBuffer);
