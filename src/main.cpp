@@ -7,6 +7,8 @@
 #include "objparser.hpp"
 #include <iostream>
 
+using namespace std::string_literals;
+
 int main() {
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
     AC_Engine::FrameBuffer frameBuffer(640, 480);
@@ -21,7 +23,7 @@ int main() {
     simd::Matrix4x4 model{};
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
-    renderObject obj = AC_Engine::ObjParser::parseObjFile("../assets/spot.obj");
+    renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
 
     std::cout << "Vertices: " << obj.vertices.size() << std::endl;
     std::cout << "Faces: " << obj.faces.size() << std::endl;

@@ -89,6 +89,8 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
 add_executable(AC-CPUEngine ${SOURCES} ${HEADERS})
 target_include_directories(AC-CPUEngine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# Injecter le répertoire racine du projet dans le code C++
+target_compile_definitions(AC-CPUEngine PRIVATE PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # mathLibCPP est la vraie cible de la lib (elle propage mathLibSIMD et ses includes)
 target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL imgui implot mathLibSIMD)
