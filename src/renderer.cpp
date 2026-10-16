@@ -105,7 +105,7 @@ namespace AC_Engine
             }
             float drange = (dmax > dmin) ? (dmax - dmin) : 1.0f;
             for (const auto& face : obj.faces) {
-                if (visible[face[0]] || visible[face[1]] || visible[face[2]]) continue;
+                if (!visible[face[0]] || !visible[face[1]] || !visible[face[2]]) continue;
                 simd::Vec3f& v0 = verticesNdc[face[0]];
                 simd::Vec3f& v1 = verticesNdc[face[1]];
                 simd::Vec3f& v2 = verticesNdc[face[2]];
