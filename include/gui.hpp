@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <implot.h>
 #include <GLFW/glfw3.h>
 #include <string>
 #include <chrono>
@@ -11,6 +12,13 @@
 namespace AC_Engine
 {
     class FrameBuffer;
+
+    struct FrameBufferData
+    {
+        int width;
+        int height;
+        float clearColor[4];
+    };
 }
 
 namespace AC_Engine
@@ -40,8 +48,7 @@ namespace AC_Engine
         void shutdown();
 
     public:
-        int getSceneWidth() const { return m_sceneWidth; }
-        int getSceneHeight() const { return m_sceneHeight; }
+        FrameBufferData getFrameBufferData() const { return { m_sceneWidth, m_sceneHeight, {m_clearColor[3], m_clearColor[2], m_clearColor[1], m_clearColor[0]} }; }
 
     private:
         /**
@@ -59,9 +66,11 @@ namespace AC_Engine
         /**
          * @brief A history of FPS values for calculating the average FPS.
          */
+        std::vector<float> m_fpsHistory;
 
         unsigned int m_sceneTexture = 0;
         int m_sceneWidth = 640;
         int m_sceneHeight = 480;
+        float m_clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 }

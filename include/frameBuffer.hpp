@@ -12,7 +12,7 @@ namespace AC_Engine
         FrameBuffer(int width, int height);
         ~FrameBuffer();
         void setPixel(int x, int y, unsigned int color);
-        void update(int width, int height);
+        void update(int width, int height, float clearColor[4] = nullptr);
         void clear();
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
