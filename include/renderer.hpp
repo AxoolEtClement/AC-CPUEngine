@@ -6,6 +6,7 @@
 #include "renderObject.hpp"
 #include <vector>
 #include "camera.hpp"
+#include "texture.hpp"
 
 namespace AC_Engine
 {
@@ -18,11 +19,15 @@ namespace AC_Engine
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
         void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
-        void renderObjects(std::vector<renderObject> renderObjects, Camera cam);
+        void renderObjects(std::vector<std::pair<renderObject, Texture>>& renderObjects, Camera cam);
     private:
         FrameBuffer& m_frameBuffer;
 
         float barycentricWeights(int x0, int y0, int x1, int y1, int x2, int y2);
         void drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2);
+        void drawTriangleTexturedAndLit(int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, const Texture& texture, float brightness);
+
+    private:
+        float ambiantLightIntensity = 0.18f;
     };
 }

@@ -6,6 +6,7 @@
 struct Vertex
 {
     simd::Vec4 pos;
+    std::pair<float, float> texCoord; // (u, v)
 };
 
 struct renderObject
@@ -13,6 +14,8 @@ struct renderObject
     simd::Matrix4x4 modelMatrix{};
     std::vector<Vertex> vertices{};
     std::vector<std::array<size_t, 3>> faces{};
+    std::vector<std::pair<float, float>> uvs{};
+    std::vector<int> face_uvs{};
 
     // TODO : add texture id ...
 };

@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 project(AC-CPUEngine)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -8,9 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
+
 
 include(FetchContent)
 
@@ -47,7 +48,15 @@ FetchContent_Declare(
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external_libs/AC-Math
 )
 
-FetchContent_MakeAvailable(glfw imgui implot AC-Math)
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external_libs/stb
+)
+
+FetchContent_MakeAvailable(glfw imgui implot AC-Math stb)
 
 
 find_package(OpenGL REQUIRED)
@@ -80,6 +89,9 @@ target_link_libraries(implot PUBLIC imgui)
 
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
@@ -93,5 +105,5 @@ target_include_directories(AC-CPUEngine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/incl
 target_compile_definitions(AC-CPUEngine PRIVATE PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # mathLibCPP est la vraie cible de la lib (elle propage mathLibSIMD et ses includes)
-target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL imgui implot mathLibSIMD)
+target_link_libraries(AC-CPUEngine PRIVATE glfw OpenGL::GL imgui implot mathLibSIMD stb)
 

@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "window.hpp"
 #include "frameBuffer.hpp"
 #include "renderer.hpp"
@@ -5,6 +6,7 @@
 #include "Vec4.hpp"
 #include "cameraManager.hpp"
 #include "objparser.hpp"
+#include "texture.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
@@ -27,15 +29,20 @@ int main() {
 
     std::cout << "Vertices: " << obj.vertices.size() << std::endl;
     std::cout << "Faces: " << obj.faces.size() << std::endl;
+
+    Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
+    std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
+
+    std::vector<std::pair<renderObject, Texture>> renderObjects = { {obj, texture} };
     // Main loop
     while (!window.shouldClose()) 
     {
-        obj.modelMatrix *= rotation;
+        renderObjects[0].first.modelMatrix *= rotation;
         window.pollEvents();
         gui.newFrame();
         cam.getActiveCamera().updateInfos(gui.getFrameBufferData().width, gui.getFrameBufferData().height, 90.f, 0.1f, 100.f);
         frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
-        renderer.renderObjects({obj}, cam.getActiveCamera());
+        renderer.renderObjects(renderObjects, cam.getActiveCamera());
         gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();
