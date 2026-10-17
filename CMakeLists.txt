@@ -1,7 +1,4 @@
 cmake_minimum_required(VERSION 3.25)
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
 project(AC-CPUEngine)
 
 set(CMAKE_CXX_STANDARD 23)
