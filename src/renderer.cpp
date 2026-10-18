@@ -139,6 +139,7 @@ namespace AC_Engine
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
         simd::Vec3f lightDir{ 0.57735f, 0.57735f, 0.57735f };
+		simd::Vec3f halfVector{ (lightDir - simd::Vec3f{ 0.f, 0.f, 1.f }).Normalize() };
 
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
         for (const auto& obj : renderObjects) {
@@ -149,6 +150,7 @@ namespace AC_Engine
             std::vector<float> ndc_w = {};
             std::vector<int> screen_x = {};
             std::vector<int> screen_y = {};
+			std::vector<simd::Vec3f> worldNormals = {};
 
             for (const auto& vertex : obj.first.vertices)
             {
@@ -161,6 +163,7 @@ namespace AC_Engine
                     ndc_z.push_back(clip.getZ() * inv);
                     ndc_w.push_back(inv);
                     visible.push_back(true);
+					worldNormals.push_back(obj.first.modelMatrix.TransformDirection(vertex.normal).Normalize());
                 }
                 else
                 {
@@ -169,6 +172,7 @@ namespace AC_Engine
                     screen_y.push_back(0);
                     ndc_z.push_back(0.f);
                     ndc_w.push_back(0.f);
+					worldNormals.push_back({ 0.f, 0.f, 0.f });
                 }
             }
             float drange = 1.0f;
@@ -197,8 +201,13 @@ namespace AC_Engine
                 std::pair<float,float> uva = obj.first.uvs[ta];
                 std::pair<float,float> uvb = obj.first.uvs[tb];
                 std::pair<float,float> uvc = obj.first.uvs[tc];
-
-                drawTriangleTexturedAndLit(screen_x[a], screen_y[a], ndc_z[a], ndc_w[a], uva, screen_x[b], screen_y[b], ndc_z[b], ndc_w[b], uvb, screen_x[c], screen_y[c], ndc_z[c], ndc_w[c], uvc, obj.second, brightness);
+                
+                drawTrianglePhong(
+                    screen_x[a], screen_y[a], ndc_z[a], ndc_w[a], uva, worldNormals[a],
+                    screen_x[b], screen_y[b], ndc_z[b], ndc_w[b], uvb, worldNormals[b],
+                    screen_x[c], screen_y[c], ndc_z[c], ndc_w[c], uvc, worldNormals[c],
+                    obj.second, lightDir, halfVector
+				);
             }
         }
     }
@@ -307,6 +316,170 @@ namespace AC_Engine
             row_iw += diwdy;
         }
     }
+
+    inline float pow32(float x) {
+        float x2 = x * x;
+        float x4 = x2 * x2;
+		float x8 = x4 * x4;
+		float x16 = x8 * x8;
+        return x16 * x16; // x^32
+	}
+
+    void Renderer::drawTrianglePhong(
+        int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, simd::Vec3f n0,
+        int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, simd::Vec3f n1,
+        int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, simd::Vec3f n2,
+        const Texture& texture, simd::Vec3f L, simd::Vec3f H)
+    {
+        int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
+        if (area <= 0) return;
+
+        int minX = std::max(0, std::min({ x0, x1, x2 }));
+        int maxX = std::min(m_frameBuffer.getWidth() - 1, std::max({ x0, x1, x2 }));
+        int minY = std::max(0, std::min({ y0, y1, y2 }));
+        int maxY = std::min(m_frameBuffer.getHeight() - 1, std::max({ y0, y1, y2 }));
+
+        float invArea = 1.f / static_cast<float>(area);
+
+        float u0w = uv0.first * iw0, v0w = uv0.second * iw0;
+        float u1w = uv1.first * iw1, v1w = uv1.second * iw1;
+        float u2w = uv2.first * iw2, v2w = uv2.second * iw2;
+		simd::Vec3f n0w = n0 * iw0;
+		simd::Vec3f n1w = n1 * iw1;
+		simd::Vec3f n2w = n2 * iw2;
+
+        int A0 = y1 - y2, B0 = x2 - x1;
+        int A1 = y2 - y0, B1 = x0 - x2;
+        int A2 = y0 - y1, B2 = x1 - x0;
+
+        float dzdx = (A0 * z0 + A1 * z1 + A2 * z2) * invArea;
+        float dzdy = (B0 * z0 + B1 * z1 + B2 * z2) * invArea;
+
+        float duwdx = (A0 * u0w + A1 * u1w + A2 * u2w) * invArea;
+        float duwdy = (B0 * u0w + B1 * u1w + B2 * u2w) * invArea;
+
+        float dvwdx = (A0 * v0w + A1 * v1w + A2 * v2w) * invArea;
+        float dvwdy = (B0 * v0w + B1 * v1w + B2 * v2w) * invArea;
+
+        simd::Vec3f dnwdx = (A0 * n0w + A1 * n1w + A2 * n2w) * invArea;
+        simd::Vec3f dnwdy = (B0 * n0w + B1 * n1w + B2 * n2w) * invArea;
+
+        float diwdx = (A0 * iw0 + A1 * iw1 + A2 * iw2) * invArea;
+        float diwdy = (B0 * iw0 + B1 * iw1 + B2 * iw2) * invArea;
+
+        int start_e0 = barycentricWeights(x1, y1, x2, y2, minX, minY);
+        int start_e1 = barycentricWeights(x2, y2, x0, y0, minX, minY);
+        int start_e2 = barycentricWeights(x0, y0, x1, y1, minX, minY);
+
+        float init_e0 = start_e0 * invArea;
+        float init_e1 = start_e1 * invArea;
+        float init_e2 = start_e2 * invArea;
+
+        float row_z = init_e0 * z0 + init_e1 * z1 + init_e2 * z2;
+        float row_uw = init_e0 * u0w + init_e1 * u1w + init_e2 * u2w;
+        float row_vw = init_e0 * v0w + init_e1 * v1w + init_e2 * v2w;
+        float row_iw = init_e0 * iw0 + init_e1 * iw1 + init_e2 * iw2;
+        simd::Vec3f row_nw = init_e0 * n0w + init_e1 * n1w + init_e2 * n2w;
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            int e0 = start_e0;
+            int e1 = start_e1;
+            int e2 = start_e2;
+
+            float z = row_z;
+            float uw = row_uw;
+            float vw = row_vw;
+            float iw = row_iw;
+            simd::Vec3f nw = row_nw;
+
+            bool inside = false;
+
+            for (int x = minX; x <= maxX; x++)
+            {
+
+                if ((e0 | e1 | e2) < 0)
+                {
+                    if (inside) break; // If we were inside the triangle and now we're outside, we can break early
+                    e0 += A0; e1 += A1; e2 += A2;
+                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx;
+					nw += dnwdx;
+                    continue;
+                }
+                inside = true; // We are inside the triangle
+                int idx = y * m_frameBuffer.getWidth() + x;
+
+                if (z >= m_frameBuffer.getZBuffer()[idx])
+                {
+                    e0 += A0; e1 += A1; e2 += A2;
+                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx;
+					nw += dnwdx;
+                    continue;
+                }
+                float u = uw / iw;
+                float v = vw / iw;
+
+				simd::Vec3f n = nw / iw;
+
+                if (std::isnan(u) || std::isnan(v) || std::isnan(n.getX()) || std::isnan(n.getY()) || std::isnan(n.getZ()) ||
+                    std::isinf(u) || std::isinf(v) || std::isinf(n.getX()) || std::isinf(n.getY()) || std::isinf(n.getZ()))
+                {
+                    // If we hit a NaN, color this specific pixel bright magenta/blue as a warning!
+                    m_frameBuffer.getZBuffer()[idx] = z;
+                    m_frameBuffer.setPixel(x, y, 0xFFFF00FF); // Magenta is great for spotting math bugs
+                    e0 += A0; e1 += A1; e2 += A2;
+                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+                    continue;
+                }
+
+                n.Normalize();
+				float ndotl = n.Dot(L);
+
+				if (ndotl < 0.0f) ndotl = 0.0f;
+				float diffuse = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
+
+				float ndotH = n.Dot(H);
+				if (ndotH < 0.0f) ndotH = 0.0f;
+				float specular = pow32(ndotH) * specularStrength;
+
+                m_frameBuffer.getZBuffer()[idx] = z;
+
+                uint32_t color = TextureLoader::sampleTexture(texture, u, v);
+                m_frameBuffer.setPixel(x, y, color_phong(color, diffuse, specular));
+
+                e0 += A0; e1 += A1; e2 += A2;
+                z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx;
+				nw += dnwdx;
+            }
+
+            start_e0 += B0;
+            start_e1 += B1;
+            start_e2 += B2;
+
+            row_z += dzdy;
+            row_uw += duwdy;
+            row_vw += dvwdy;
+            row_iw += diwdy;
+			row_nw += dnwdy;
+        }
+    }
+
+    uint32_t Renderer::color_phong(uint32_t color, float diffuse, float specular)
+    {
+        // AABBGGRR
+        uint32_t a = (color >> 24) & 0xFF;
+
+        float fb = ((color >> 16) & 0xFF) * diffuse + 255.f * specular;
+        float fg = ((color >> 8) & 0xFF) * diffuse + 255.f * specular;
+        float fr = (color & 0xFF) * diffuse + 255.f * specular;
+
+        uint8_t b = static_cast<uint8_t>(std::clamp(fb, 0.0f, 255.0f));
+        uint8_t g = static_cast<uint8_t>(std::clamp(fg, 0.0f, 255.0f));
+        uint8_t r = static_cast<uint8_t>(std::clamp(fr, 0.0f, 255.0f));
+
+        return (a << 24) | (b << 16) | (g << 8) | r;
+    }
+
     void Renderer::drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2)
     {
         int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
