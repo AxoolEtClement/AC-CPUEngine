@@ -22,7 +22,6 @@ int main() {
     cam.createCamera(AC_Engine::FixedCamera{});
     cam.setActiveCamera(0);
 
-    simd::Matrix4x4 model{};
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
     renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);

@@ -444,7 +444,7 @@ namespace AC_Engine
 
                 m_frameBuffer.getZBuffer()[idx] = z;
 
-                uint32_t color = TextureLoader::sampleTexture(texture, u, v);
+                uint32_t color = TextureLoader::sampleTextureBilinear(texture, u, v);
                 m_frameBuffer.setPixel(x, y, color_phong(color, diffuse, specular));
 
                 e0 += A0; e1 += A1; e2 += A2;
