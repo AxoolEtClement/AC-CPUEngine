@@ -32,6 +32,8 @@ namespace AC_Engine
 			int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, simd::Vec3f n2,
             const Texture& texture, simd::Vec3f L, simd::Vec3f H);
 		uint32_t color_phong(uint32_t color, float diffuse, float specular);
+        void clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out);
+        void projectAndDraw(const std::vector<Vertex>& triangle, const Texture& tex, simd::Vec3f L, simd::Vec3f H);
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;

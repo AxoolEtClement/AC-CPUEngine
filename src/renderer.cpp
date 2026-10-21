@@ -143,71 +143,57 @@ namespace AC_Engine
 
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
         for (const auto& obj : renderObjects) {
-            std::vector<bool> visible;
+            //std::vector<bool> visible;
             simd::Matrix4x4 MVP{ VP * obj.first.modelMatrix };
 
-            std::vector<float> ndc_z = {};
-            std::vector<float> ndc_w = {};
-            std::vector<int> screen_x = {};
-            std::vector<int> screen_y = {};
-			std::vector<simd::Vec3f> worldNormals = {};
+            std::vector<simd::Vec4> clipCoord{};
+            std::vector<float> ndc_z{};
+            std::vector<float> ndc_w{};
+            std::vector<int> screen_x{};
+            std::vector<int> screen_y{};
+			std::vector<simd::Vec3f> worldNormals{};
 
             for (const auto& vertex : obj.first.vertices)
             {
                 simd::Vec4 clip{ MVP * vertex.pos };
-                if (clip.getW() > 0.0001f)
-                {
-                    float inv = 1.f / clip.getW();
-                    screen_x.push_back(static_cast<int>((clip.getX() * inv + 1.0f) * 0.5f * width));
-                    screen_y.push_back(static_cast<int>((1.f - clip.getY() * inv) * 0.5f * height));
-                    ndc_z.push_back(clip.getZ() * inv);
-                    ndc_w.push_back(inv);
-                    visible.push_back(true);
-					worldNormals.push_back(obj.first.modelMatrix.TransformDirection(vertex.normal).Normalize());
-                }
-                else
-                {
-                    visible.push_back(false);
-                    screen_x.push_back(0);
-                    screen_y.push_back(0);
-                    ndc_z.push_back(0.f);
-                    ndc_w.push_back(0.f);
-					worldNormals.push_back({ 0.f, 0.f, 0.f });
-                }
+                
+                float inv = 1.f / clip.getW();
+                screen_x.push_back(static_cast<int>((clip.getX() * inv + 1.0f) * 0.5f * width));
+                screen_y.push_back(static_cast<int>((1.f - clip.getY() * inv) * 0.5f * height));
+                ndc_z.push_back(clip.getZ() * inv);
+                ndc_w.push_back(inv);
+                //visible.push_back(true);
+				worldNormals.push_back(obj.first.modelMatrix.TransformDirection(vertex.normal).Normalize());
+                clipCoord.push_back(clip);                
             }
-            float drange = 1.0f;
-            for (size_t f = 0; f < obj.first.faces.size(); f++) {
-                const auto& face = obj.first.faces[f];
-                int a = face[0];
-                int b = face[1];
-                int c = face[2];
-                if (!visible[face[0]] || !visible[face[1]] || !visible[face[2]]) continue;
-                if (barycentricWeights(screen_x[a], screen_y[a], screen_x[b], screen_y[b], screen_x[c], screen_y[c]) <= 0) continue;
 
-                simd::Vec3f p0 = {obj.first.vertices[a].pos.getX(), obj.first.vertices[a].pos.getY(), obj.first.vertices[a].pos.getZ() };
-                simd::Vec3f p1 = {obj.first.vertices[b].pos.getX(), obj.first.vertices[b].pos.getY(), obj.first.vertices[b].pos.getZ() };
-                simd::Vec3f p2 = {obj.first.vertices[c].pos.getX(), obj.first.vertices[c].pos.getY(), obj.first.vertices[c].pos.getZ() };
+            for (int f = 0; f < obj.first.faces.size(); f++)
+            {
+                Vertex v0{};
+                Vertex v1{};
+                Vertex v2{};
 
-                simd::Vec3f edge1 = p1 - p0;
-                simd::Vec3f edge2 = p2 - p0;
-                simd::Vec3f n = obj.first.modelMatrix.TransformDirection(edge1.Cross(edge2)).Normalize();
-                float ndotl = n.Dot(lightDir);
-                if (ndotl < 0.0f) ndotl = 0.0f;
-                float brightness = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
+                v0.pos = clipCoord[obj.first.faces[f][0]];
+                v1.pos = clipCoord[obj.first.faces[f][1]];
+                v2.pos = clipCoord[obj.first.faces[f][2]];
 
                 int ta = obj.first.face_uvs[f * 3 + 0];
                 int tb = obj.first.face_uvs[f * 3 + 1];
                 int tc = obj.first.face_uvs[f * 3 + 2];
-                std::pair<float,float> uva = obj.first.uvs[ta];
-                std::pair<float,float> uvb = obj.first.uvs[tb];
-                std::pair<float,float> uvc = obj.first.uvs[tc];
-                
-                drawTrianglePhong(
-                    screen_x[a], screen_y[a], ndc_z[a], ndc_w[a], uva, worldNormals[a],
-                    screen_x[b], screen_y[b], ndc_z[b], ndc_w[b], uvb, worldNormals[b],
-                    screen_x[c], screen_y[c], ndc_z[c], ndc_w[c], uvc, worldNormals[c],
-                    obj.second, lightDir, halfVector
-				);
+                v0.texCoord = obj.first.uvs[ta];
+                v1.texCoord = obj.first.uvs[tb];
+                v2.texCoord = obj.first.uvs[tc];
+
+                v0.normal = worldNormals[obj.first.faces[f][0]];
+                v1.normal = worldNormals[obj.first.faces[f][1]];
+                v2.normal = worldNormals[obj.first.faces[f][2]];
+
+                std::vector<Vertex> clippedVertices{};
+                clipTriangle({ v0, v1, v2 }, clippedVertices);
+                for (size_t i = 0; i < clippedVertices.size() / 3; i++)
+                {
+                    projectAndDraw({ clippedVertices[i * 3 + 0], clippedVertices[i * 3 + 1] , clippedVertices[i * 3 + 2] }, obj.second, lightDir, halfVector);
+                }
             }
         }
     }
@@ -478,6 +464,128 @@ namespace AC_Engine
         uint8_t r = static_cast<uint8_t>(std::clamp(fr, 0.0f, 255.0f));
 
         return (a << 24) | (b << 16) | (g << 8) | r;
+    }
+
+    inline Vertex clipLerp(Vertex v0, Vertex v1, float t) {
+        Vertex r{};
+        r.pos = v0.pos + t * (v1.pos - v0.pos);
+        r.texCoord.first = v0.texCoord.first + t * (v1.texCoord.first - v0.texCoord.first);
+        r.texCoord.second = v0.texCoord.second + t * (v1.texCoord.second - v0.texCoord.second);
+        r.normal = v0.normal + t * (v1.normal - v0.normal);
+
+        return r;
+    }
+
+    void Renderer::clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out)
+    {
+        std::vector<Vertex> poly{};
+        int n{};
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vertex a = in[i];
+            Vertex b = in[(i + 1) % 3];
+            float da = a.pos.getZ() + a.pos.getW();
+            float db = b.pos.getZ() + b.pos.getW();
+            bool a_in = da >= 0.0f;
+            bool b_in = db >= 0.0f;
+
+            if (a_in && b_in)
+            {
+                poly.push_back(b);
+                n++;
+            }
+            else if (a_in && !b_in)
+            {
+                float t = da / (da - db);
+                poly.push_back(clipLerp(a, b, t));
+                n++;
+            }
+            else if (!a_in && b_in)
+            {
+                float t = da / (da - db);
+                poly.push_back(clipLerp(a, b, t));
+                poly.push_back(b);
+                n += 2;
+            }
+
+            if (n == 3) 
+            {
+                out.push_back(poly[0]);
+                out.push_back(poly[1]);
+                out.push_back(poly[2]);
+            }
+            else if (n == 4)
+            {
+                out.push_back(poly[0]);
+                out.push_back(poly[1]);
+                out.push_back(poly[2]);
+
+                out.push_back(poly[0]);
+                out.push_back(poly[2]);
+                out.push_back(poly[3]);
+            }
+        }
+    }
+
+    void Renderer::projectAndDraw(const std::vector<Vertex>& triangle, const Texture& tex, simd::Vec3f L, simd::Vec3f H)
+    {
+        std::array<int, 3> screen_x{};
+        std::array<int, 3> screen_y{};
+        std::array<float, 3> ndc_z{};
+        std::array<float, 3> inv_w{};
+
+        for (size_t i = 0; i < 3; i++)
+        {
+            float inv = 1.0f / triangle[i].pos.getW();
+            screen_x[i] = (int)((triangle[i].pos.getX() * inv + 1.0f) * 0.5f * m_frameBuffer.getWidth());
+            screen_y[i] = (int)((1.0f - (triangle[i].pos.getY() * inv + 1.0f) * 0.5f) * m_frameBuffer.getHeight());
+            ndc_z[i] = triangle[i].pos.getZ() * inv;
+            inv_w[i] = inv;
+        }
+
+        if (barycentricWeights(screen_x[0], screen_y[0], screen_x[1], screen_y[1], screen_x[2], screen_y[2]) <= 0) return;
+
+        drawTrianglePhong(
+            screen_x[0], screen_y[0], ndc_z[0], inv_w[0], triangle[0].texCoord, triangle[0].normal,
+            screen_x[1], screen_y[1], ndc_z[1], inv_w[1], triangle[1].texCoord, triangle[1].normal,
+            screen_x[2], screen_y[2], ndc_z[2], inv_w[2], triangle[2].texCoord, triangle[2].normal,
+            tex, L, H
+        );
+
+        //for (size_t f = 0; f < obj.first.faces.size(); f++) {
+        //    const auto& face = obj.first.faces[f];
+        //    int a = face[0];
+        //    int b = face[1];
+        //    int c = face[2];
+        //    //if (!visible[face[0]] || !visible[face[1]] || !visible[face[2]]) continue;
+        //    if (barycentricWeights(screen_x[a], screen_y[a], screen_x[b], screen_y[b], screen_x[c], screen_y[c]) <= 0) continue;
+
+        //    simd::Vec3f p0{ obj.first.vertices[a].pos.getX(), obj.first.vertices[a].pos.getY(), obj.first.vertices[a].pos.getZ() };
+        //    simd::Vec3f p1{ obj.first.vertices[b].pos.getX(), obj.first.vertices[b].pos.getY(), obj.first.vertices[b].pos.getZ() };
+        //    simd::Vec3f p2{ obj.first.vertices[c].pos.getX(), obj.first.vertices[c].pos.getY(), obj.first.vertices[c].pos.getZ() };
+
+        //    simd::Vec3f edge1 = p1 - p0;
+        //    simd::Vec3f edge2 = p2 - p0;
+        //    simd::Vec3f n = obj.first.modelMatrix.TransformDirection(edge1.Cross(edge2)).Normalize();
+        //    float ndotl = n.Dot(lightDir);
+        //    if (ndotl < 0.0f) ndotl = 0.0f;
+        //    float brightness = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
+
+        //    int ta = obj.first.face_uvs[f * 3 + 0];
+        //    int tb = obj.first.face_uvs[f * 3 + 1];
+        //    int tc = obj.first.face_uvs[f * 3 + 2];
+        //    std::pair<float, float> uva = obj.first.uvs[ta];
+        //    std::pair<float, float> uvb = obj.first.uvs[tb];
+        //    std::pair<float, float> uvc = obj.first.uvs[tc];
+
+        //    drawTrianglePhong(
+        //        screen_x[a], screen_y[a], ndc_z[a], ndc_w[a], uva, worldNormals[a],
+        //        screen_x[b], screen_y[b], ndc_z[b], ndc_w[b], uvb, worldNormals[b],
+        //        screen_x[c], screen_y[c], ndc_z[c], ndc_w[c], uvc, worldNormals[c],
+        //        obj.second, lightDir, halfVector
+        //    );
+        //}
     }
 
     void Renderer::drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2)
