@@ -24,7 +24,7 @@ namespace AC_Engine
         void setActiveCamera(const int& cameraid) { m_activeCameraId = cameraid; }
 
     private:
-        std::vector<Camera> m_cameras;
-        int m_activeCameraId;
+        std::vector<Camera> m_cameras{};
+        int m_activeCameraId{};
     };
 }

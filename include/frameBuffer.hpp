@@ -17,11 +17,14 @@ namespace AC_Engine
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
         const uint32_t* getPixels() const { return m_prixels.data(); }
+        std::vector<float>& getZBuffer() { return m_zBuffer; }
+        void clearZBuffer();
 
     private:
         int m_width;
         int m_height;
         std::vector<uint32_t> m_prixels;
+        std::vector<float> m_zBuffer;
         uint32_t m_clearColor = 0xFF000000;
     };
 }

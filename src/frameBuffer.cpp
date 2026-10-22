@@ -5,6 +5,7 @@ namespace AC_Engine
     FrameBuffer::FrameBuffer(int width, int height) : m_width(width), m_height(height)
     {
         m_prixels.resize(m_width * m_height, 0);
+        m_zBuffer.resize(m_width * m_height, 1e30f);
 
         for (std::size_t i = 0; i < m_prixels.size(); ++i) 
         {
@@ -40,10 +41,16 @@ namespace AC_Engine
         m_width = width;
         m_height = height;
         m_prixels.resize(m_width * m_height);
+        m_zBuffer.resize(m_width * m_height);
     }
 
     void FrameBuffer::clear()
     {
         std::fill(m_prixels.begin(), m_prixels.end(), m_clearColor ? m_clearColor : 0x00000000);
+
+    }
+    void FrameBuffer::clearZBuffer()
+    {
+        for (size_t i = 0; i < m_zBuffer.size(); i++) m_zBuffer[i] = 1e30f;
     }
 }
