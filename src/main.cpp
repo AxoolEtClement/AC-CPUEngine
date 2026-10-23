@@ -7,6 +7,7 @@
 #include "cameraManager.hpp"
 #include "objparser.hpp"
 #include "texture.hpp"
+#include "font.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
@@ -17,6 +18,8 @@ int main() {
     AC_Engine::Renderer renderer(frameBuffer);
     AC_Engine::gui gui;
     gui.init(window.getWindow());
+
+    AC_Engine::CustomUI customUI;
 
     AC_Engine::CameraManager cam{};
     cam.createCamera(AC_Engine::FixedCamera{});
@@ -34,16 +37,19 @@ int main() {
     std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
 
     std::vector<std::pair<renderObject, Texture>> renderObjects = { {obj, texture} };
+
     // Main loop
     while (!window.shouldClose()) 
     {
         renderObjects[0].first.modelMatrix *= rotation;
         window.pollEvents();
+        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
         gui.newFrame();
-        cam.getActiveCamera().updateInfos(gui.getFrameBufferData().width, gui.getFrameBufferData().height, 90.f, 0.1f, 100.f);
-        frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
+        cam.getActiveCamera().updateInfos(window.getWidth(), window.getHeight(), 90.f, 0.1f, 100.f);
+        frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
         renderer.renderObjects(renderObjects, cam.getActiveCamera());
-        gui.render(frameBuffer);
+        renderer.renderFrame();
+        //gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();
     }

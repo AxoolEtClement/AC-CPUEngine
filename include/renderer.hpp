@@ -16,6 +16,8 @@ namespace AC_Engine
         Renderer(FrameBuffer& frameBuffer) : m_frameBuffer(frameBuffer) {};
         ~Renderer() = default;
 
+        void renderFrame();
+
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
         void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
