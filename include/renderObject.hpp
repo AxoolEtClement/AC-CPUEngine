@@ -2,6 +2,8 @@
 #include "Mat4x4.hpp"
 #include "Vec4.hpp"
 #include <vector>
+#include <array>
+#include <utility>
 
 struct Vertex
 {
@@ -17,6 +19,8 @@ struct renderObject
     std::vector<std::array<size_t, 3>> faces{};
     std::vector<std::pair<float, float>> uvs{};
     std::vector<int> face_uvs{};
+
+    int materialId = 0;
 
     void initNormals()     {
         

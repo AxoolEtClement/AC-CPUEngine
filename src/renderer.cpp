@@ -143,18 +143,21 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjects(std::vector<std::pair<renderObject, Texture>>& renderObjects, Camera cam)
+    void Renderer::renderObjects(std::vector<renderObject>& objects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
-        simd::Vec3f lightDir{ 0.57735f, 0.57735f, 0.57735f };
-		simd::Vec3f halfVector{ (lightDir - simd::Vec3f{ 0.f, 0.f, 1.f }).Normalize() };
+        Light light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, {1.f, 1.f, 1.f}, ambiantLightIntensity };
+		simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
+        V.Normalize();
 
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
-        for (const auto& obj : renderObjects) {
+        for (const auto& obj : objects) {
             //std::vector<bool> visible;
-            simd::Matrix4x4 MVP{ VP * obj.first.modelMatrix };
+
+            const Material& mat = m_materialLibrary.get(obj.materialId);
+            simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<float> ndc_z{};
@@ -163,7 +166,7 @@ namespace AC_Engine
             std::vector<int> screen_y{};
 			std::vector<simd::Vec3f> worldNormals{};
 
-            for (const auto& vertex : obj.first.vertices)
+            for (const auto& vertex : obj.vertices)
             {
                 simd::Vec4 clip{ MVP * vertex.pos };
                 
@@ -173,36 +176,37 @@ namespace AC_Engine
                 ndc_z.push_back(clip.getZ() * inv);
                 ndc_w.push_back(inv);
                 //visible.push_back(true);
-				worldNormals.push_back(obj.first.modelMatrix.TransformDirection(vertex.normal).Normalize());
+				worldNormals.push_back(obj.modelMatrix.TransformDirection(vertex.normal).Normalize());
                 clipCoord.push_back(clip);                
             }
 
-            for (int f = 0; f < obj.first.faces.size(); f++)
+            for (int f = 0; f < obj.faces.size(); f++)
             {
                 Vertex v0{};
                 Vertex v1{};
                 Vertex v2{};
 
-                v0.pos = clipCoord[obj.first.faces[f][0]];
-                v1.pos = clipCoord[obj.first.faces[f][1]];
-                v2.pos = clipCoord[obj.first.faces[f][2]];
+                v0.pos = clipCoord[obj.faces[f][0]];
+                v1.pos = clipCoord[obj.faces[f][1]];
+                v2.pos = clipCoord[obj.faces[f][2]];
 
-                int ta = obj.first.face_uvs[f * 3 + 0];
-                int tb = obj.first.face_uvs[f * 3 + 1];
-                int tc = obj.first.face_uvs[f * 3 + 2];
-                v0.texCoord = obj.first.uvs[ta];
-                v1.texCoord = obj.first.uvs[tb];
-                v2.texCoord = obj.first.uvs[tc];
+                int ta = obj.face_uvs[f * 3 + 0];
+                int tb = obj.face_uvs[f * 3 + 1];
+                int tc = obj.face_uvs[f * 3 + 2];
+                v0.texCoord = obj.uvs[ta];
+                v1.texCoord = obj.uvs[tb];
+                v2.texCoord = obj.uvs[tc];
 
-                v0.normal = worldNormals[obj.first.faces[f][0]];
-                v1.normal = worldNormals[obj.first.faces[f][1]];
-                v2.normal = worldNormals[obj.first.faces[f][2]];
+                v0.normal = worldNormals[obj.faces[f][0]];
+                v1.normal = worldNormals[obj.faces[f][1]];
+                v2.normal = worldNormals[obj.faces[f][2]];
 
                 std::vector<Vertex> clippedVertices{};
                 clipTriangle({ v0, v1, v2 }, clippedVertices);
                 for (size_t i = 0; i < clippedVertices.size() / 3; i++)
                 {
-                    projectAndDraw({ clippedVertices[i * 3 + 0], clippedVertices[i * 3 + 1] , clippedVertices[i * 3 + 2] }, obj.second, lightDir, halfVector);
+                    projectAndDraw({ clippedVertices[i*3+0], clippedVertices[i*3+1], clippedVertices[i*3+2] },
+                               mat, light, V);
                 }
             }
         }
@@ -325,7 +329,7 @@ namespace AC_Engine
         int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, simd::Vec3f n0,
         int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, simd::Vec3f n1,
         int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, simd::Vec3f n2,
-        const Texture& texture, simd::Vec3f L, simd::Vec3f H)
+        const Material& mat, const Light& light, simd::Vec3f V)
     {
         int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
         if (area <= 0) return;
@@ -336,6 +340,7 @@ namespace AC_Engine
         int maxY = std::min(m_frameBuffer.getHeight() - 1, std::max({ y0, y1, y2 }));
 
         float invArea = 1.f / static_cast<float>(area);
+        simd::Vec3f H = (light.dir + V).Normalize();
 
         float u0w = uv0.first * iw0, v0w = uv0.second * iw0;
         float u1w = uv1.first * iw1, v1w = uv1.second * iw1;
@@ -428,20 +433,28 @@ namespace AC_Engine
                     continue;
                 }
 
-                n.Normalize();
-				float ndotl = n.Dot(L);
+                n = n.Normalize();
+                float ndotl = std::max(0.f, n.Dot(light.dir));
+                float ndoth = std::clamp(n.Dot(H), 0.f, 1.f);
+                float spec  = (ndotl > 0.f) ? mat.specLut[(int)(ndoth * 255.f)] : 0.f;
+                float k     = light.ambient + (1.f - light.ambient) * ndotl;
 
-				if (ndotl < 0.0f) ndotl = 0.0f;
-				float diffuse = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
+                float tr = 1.f, tg = 1.f, tb = 1.f;
+                if (mat.diffuseMap) {
+                    uint32_t c = TextureLoader::sampleTextureBilinear(*mat.diffuseMap, u, v);
+                    tr = (c & 0xFF) / 255.f;
+                    tg = ((c >> 8) & 0xFF) / 255.f;
+                    tb = ((c >> 16) & 0xFF) / 255.f;
+                }
 
-				float ndotH = n.Dot(H);
-				if (ndotH < 0.0f) ndotH = 0.0f;
-				float specular = pow32(ndotH) * specularStrength;
+                float r = mat.diffuse.r * tr * k + mat.specular.r * spec + mat.emissive.r;
+                float g = mat.diffuse.g * tg * k + mat.specular.g * spec + mat.emissive.g;
+                float b = mat.diffuse.b * tb * k + mat.specular.b * spec + mat.emissive.b;
+
+                auto to8 = [](float x) { return (uint32_t)(std::clamp(x, 0.f, 1.f) * 255.f + 0.5f); };
 
                 m_frameBuffer.getZBuffer()[idx] = z;
-
-                uint32_t color = TextureLoader::sampleTextureBilinear(texture, u, v);
-                m_frameBuffer.setPixel(x, y, color_phong(color, diffuse, specular));
+                m_frameBuffer.setPixel(x, y, 0xFF000000 | (to8(b) << 16) | (to8(g) << 8) | to8(r));
 
                 e0 += A0; e1 += A1; e2 += A2;
                 z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx;
@@ -536,9 +549,17 @@ namespace AC_Engine
                 out.push_back(poly[3]);
             }
         }
+        if (poly.size() >= 3) 
+        {
+            out.push_back(poly[0]); out.push_back(poly[1]); out.push_back(poly[2]);
+        }
+        if (poly.size() == 4) 
+        {
+            out.push_back(poly[0]); out.push_back(poly[2]); out.push_back(poly[3]);
+        }
     }
 
-    void Renderer::projectAndDraw(const std::vector<Vertex>& triangle, const Texture& tex, simd::Vec3f L, simd::Vec3f H)
+    void Renderer::projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V)
     {
         std::array<int, 3> screen_x{};
         std::array<int, 3> screen_y{};
@@ -560,7 +581,7 @@ namespace AC_Engine
             screen_x[0], screen_y[0], ndc_z[0], inv_w[0], triangle[0].texCoord, triangle[0].normal,
             screen_x[1], screen_y[1], ndc_z[1], inv_w[1], triangle[1].texCoord, triangle[1].normal,
             screen_x[2], screen_y[2], ndc_z[2], inv_w[2], triangle[2].texCoord, triangle[2].normal,
-            tex, L, H
+            mat, light, V
         );
 
         //for (size_t f = 0; f < obj.first.faces.size(); f++) {
