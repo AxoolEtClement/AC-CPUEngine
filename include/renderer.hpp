@@ -11,6 +11,7 @@
 #include "camera.hpp"
 #include "texture.hpp"
 #include "material.hpp"
+#include "Particle.hpp"
 
 namespace AC_Engine
 {
@@ -71,6 +72,8 @@ namespace AC_Engine
         void projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V);
         uint32_t shade(const Material& m, float u, float v,
                    simd::Vec3f n, const Light& light, simd::Vec3f V);
+
+		//void appendParticlesToRender(const ParticlePool& particlePool, const Material& particleMaterial, Camera& cam);
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;
