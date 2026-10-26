@@ -73,7 +73,7 @@ namespace AC_Engine
         uint32_t shade(const Material& m, float u, float v,
                    simd::Vec3f n, const Light& light, simd::Vec3f V);
 
-		//void appendParticlesToRender(const ParticlePool& particlePool, const Material& particleMaterial, Camera& cam);
+		void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;

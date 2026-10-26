@@ -50,6 +50,11 @@ namespace AC_Engine
 		return m_particles;
 	}
 
+	ParticleEmitter::ParticleEmitter(const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat)
+		: m_position(position), m_spawnRate(spawnRate), m_ParticleLife(particleLife), m_ParticleSize(particleSize), m_mat(mat)
+	{
+	}
+
 	// ParticleEmitter methods
 	void ParticleEmitter::update(float deltaTime, ParticlePool& pool)
 	{

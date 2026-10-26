@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "Vec3f.hpp"
+#include "material.hpp"
 
 namespace AC_Engine
 {
@@ -13,6 +14,7 @@ namespace AC_Engine
         float life = 0.0f;
 		float maxLife = 1.0f;
 		int nextFreeIndex = -1;
+        Material* mat = nullptr;
 
         Particle* nextFreeParticle = nullptr;
         bool isAlive();
@@ -21,20 +23,18 @@ namespace AC_Engine
     class ParticlePool {
     public:
         ParticlePool(size_t poolSize);
-		Particle* createParticle();
-		void updateParticles(float deltaTime);
+        Particle* createParticle();
+        void updateParticles(float deltaTime);
 
         const std::vector<Particle>& getParticles() const;
     private:
-		std::vector<Particle> m_particles;
-		int m_firstFreeIndex = -1;
-    }
+        std::vector<Particle> m_particles;
+        int m_firstFreeIndex = -1;
+    };
 
     class ParticleEmitter {
     public:
-		ParticleEmitter(const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize)
-			: m_position(position), m_spawnRate(spawnRate), m_ParticleLife(particleLife), m_ParticleSize(particleSize) {
-		}
+        ParticleEmitter(const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat);
 
         void update(float deltaTime, ParticlePool& pool);
     private:
@@ -44,5 +44,6 @@ namespace AC_Engine
         float m_ParticleLife;
 		float m_ParticleSize;
 		float m_timeSinceLastSpawn = 0.0f;
+        Material* m_mat;
     };
 }

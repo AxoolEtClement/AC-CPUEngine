@@ -593,9 +593,6 @@ namespace AC_Engine
                 inside = true;
                 int idx = y * m_frameBuffer.getWidth() + x;
 
-                // Note: If multiple threads write to adjacent boundary pixels sharing a Z-buffer, 
-                // ensure bounds don't overlap, or use atomic checks if needed. 
-                // With clean horizontal slices, threads own unique rows `y`, eliminating z-buffer data races entirely!
                 if (z >= m_frameBuffer.getZBuffer()[idx])
                 {
                     e0 += A0; e1 += A1; e2 += A2;
@@ -782,6 +779,14 @@ namespace AC_Engine
         //        obj.second, lightDir, halfVector
         //    );
         //}
+    }
+
+    void Renderer::appendParticlesToRender(const ParticlePool& particlePool, Camera& cam)
+    {
+        for (const auto& p : particlePool.getParticles())
+        {
+
+        }
     }
 
     void Renderer::threadLoop(int threadId)
