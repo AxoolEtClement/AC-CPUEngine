@@ -47,6 +47,8 @@ namespace AC_Engine
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
         void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
         void renderObjects(std::vector<renderObject>& renderObjects, Camera& cam);
+
+        void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
     private:
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;
@@ -72,8 +74,6 @@ namespace AC_Engine
         void projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V);
         uint32_t shade(const Material& m, float u, float v,
                    simd::Vec3f n, const Light& light, simd::Vec3f V);
-
-		void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;

@@ -17,7 +17,7 @@ namespace AC_Engine
         Material* mat = nullptr;
 
         Particle* nextFreeParticle = nullptr;
-        bool isAlive();
+        bool isAlive() const;
     };
 
     class ParticlePool {
@@ -34,10 +34,13 @@ namespace AC_Engine
 
     class ParticleEmitter {
     public:
-        ParticleEmitter(const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat);
+        ParticleEmitter(ParticlePool* pool, const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat);
 
-        void update(float deltaTime, ParticlePool& pool);
+		void setVelocity(const simd::Vec3f& velocity) { m_velocity = velocity; }
+
+        void update(float deltaTime);
     private:
+        ParticlePool* m_pool;
         simd::Vec3f m_position;
 		simd::Vec3f m_velocity;
         float m_spawnRate;

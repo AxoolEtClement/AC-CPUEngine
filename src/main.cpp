@@ -9,6 +9,7 @@
 #include "texture.hpp"
 #include "font.hpp"
 #include "material.hpp"
+#include "Particle.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
@@ -16,6 +17,7 @@ using namespace std::string_literals;
 int main() {
     MaterialLibrary materialLibrary;
     Material mat;
+	Material particleMat;
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
     AC_Engine::FrameBuffer frameBuffer(640, 480);
     AC_Engine::Renderer renderer(frameBuffer,materialLibrary);
@@ -38,13 +40,24 @@ int main() {
 
     Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
     std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
+    Texture particleTexture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s);
+    std::cout << "Texture loaded: " << particleTexture.width << "x" << particleTexture.height << std::endl;
 
     mat.diffuseMap = std::make_shared<Texture>(texture);
     mat.shininess  = 32.f;
     mat.buildSpecLut();
 
+	particleMat.diffuseMap = std::make_shared<Texture>(particleTexture);
+	particleMat.shininess = 32.f;
+	particleMat.emissive = { 0.5f, 0.5f, 0.5f };
+	particleMat.buildSpecLut();
+
     obj.materialId = materialLibrary.add(mat);
     std::vector<renderObject> renderObjects = {obj};
+
+	AC_Engine::ParticlePool particlePool(1000);
+	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
+	particleEmitter.setVelocity({ 0.f, 1.f, 0.f });
 
     // Main loop
     while (!window.shouldClose()) 
@@ -55,6 +68,11 @@ int main() {
         gui.newFrame();
         cam.getActiveCamera().updateInfos(window.getWidth(), window.getHeight(), 90.f, 0.1f, 100.f);
         frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
+
+		particleEmitter.update(0.016f); // TODO : change to real delta time
+		particlePool.updateParticles(0.016f); // TODO : change to real delta time
+
+		renderer.appendParticlesToRender(particlePool, cam.getActiveCamera());
         renderer.renderObjects(renderObjects, cam.getActiveCamera());
         renderer.renderFrame();
         //gui.render(frameBuffer);

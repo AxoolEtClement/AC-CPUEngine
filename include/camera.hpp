@@ -18,6 +18,8 @@ public:
 		this->far = far;
 		this->aspect = static_cast<float>(width) / static_cast<float>(height);
 	};
+	simd::Vec3f getForward() const { return forward; }
+	simd::Vec3f getUp() const { return up; }
 
 private:
 	

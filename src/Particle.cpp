@@ -1,9 +1,10 @@
 #include "Particle.hpp"
+#include "Particle.hpp"
 
 namespace AC_Engine
 {
 	// Particle methods
-	bool Particle::isAlive()
+	bool Particle::isAlive() const
 	{
 		return life >= 0.f;
 	}
@@ -50,18 +51,18 @@ namespace AC_Engine
 		return m_particles;
 	}
 
-	ParticleEmitter::ParticleEmitter(const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat)
-		: m_position(position), m_spawnRate(spawnRate), m_ParticleLife(particleLife), m_ParticleSize(particleSize), m_mat(mat)
+	ParticleEmitter::ParticleEmitter(ParticlePool* pool, const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat)
+		: m_pool(pool), m_position(position), m_spawnRate(spawnRate), m_ParticleLife(particleLife), m_ParticleSize(particleSize), m_mat(mat)
 	{
 	}
 
 	// ParticleEmitter methods
-	void ParticleEmitter::update(float deltaTime, ParticlePool& pool)
+	void ParticleEmitter::update(float deltaTime)
 	{
 		m_timeSinceLastSpawn += deltaTime;
 		float interval = 1.0f / m_spawnRate;
 		while (m_timeSinceLastSpawn >= interval) {
-			Particle* p = pool.createParticle();
+			Particle* p = m_pool->createParticle();
 			if (p) {
 				p->position = m_position;
 				p->velocity = m_velocity;
@@ -69,6 +70,7 @@ namespace AC_Engine
 				p->size = m_ParticleSize;
 				p->life = m_ParticleLife;
 				p->maxLife = m_ParticleLife;
+				p->mat = m_mat;
 			}
 			m_timeSinceLastSpawn -= interval;
 		}
