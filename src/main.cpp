@@ -10,6 +10,7 @@
 #include "font.hpp"
 #include "material.hpp"
 #include "Particle.hpp"
+#include "proceduralTerrain.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
@@ -32,7 +33,13 @@ int main() {
 
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
+
+    AC_Engine::ProceduralTerrain terrain(100, 100);
+    terrain.generateTerrain(0.05f, 0.5f, 4);
+    terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
     renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
+    renderObject terrainObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/terrain.obj"s);
+    std::cout << "Terrain vertices: " << terrainObj.vertices.size() << std::endl;
 	obj.initNormals();
 
     std::cout << "Vertices: " << obj.vertices.size() << std::endl;
@@ -58,7 +65,7 @@ int main() {
 	AC_Engine::ParticlePool particlePool(1000);
 	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
 	particleEmitter.setVelocity({ 0.f, 1.f, 0.f });
-
+    
     // Main loop
     while (!window.shouldClose()) 
     {
