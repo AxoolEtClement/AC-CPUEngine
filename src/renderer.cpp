@@ -175,8 +175,6 @@ namespace AC_Engine
         //simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
         //V.Normalize();
 
-        m_trianglesToRender.clear();
-
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
 
         for (const auto& obj : objects) {
@@ -237,6 +235,7 @@ namespace AC_Engine
                 return m_activeThreads == 0;
                 });
         }
+        m_trianglesToRender.clear();
     }
 
     float Renderer::barycentricWeights(int x0, int y0, int x1, int y1, int x2, int y2)
@@ -593,9 +592,6 @@ namespace AC_Engine
                 inside = true;
                 int idx = y * m_frameBuffer.getWidth() + x;
 
-                // Note: If multiple threads write to adjacent boundary pixels sharing a Z-buffer, 
-                // ensure bounds don't overlap, or use atomic checks if needed. 
-                // With clean horizontal slices, threads own unique rows `y`, eliminating z-buffer data races entirely!
                 if (z >= m_frameBuffer.getZBuffer()[idx])
                 {
                     e0 += A0; e1 += A1; e2 += A2;
@@ -782,6 +778,67 @@ namespace AC_Engine
         //        obj.second, lightDir, halfVector
         //    );
         //}
+    }
+
+    void Renderer::appendParticlesToRender(const ParticlePool& particlePool, Camera& cam)
+    {
+        simd::Vec3f camForward{ cam.getForward() };
+        simd::Vec3f worldUp{ 0.f, 1.f, 0.f };
+
+        simd::Vec3f camRight{ camForward.Cross(worldUp).Normalize() };
+		simd::Vec3f camUp{ camRight.Cross(camForward).Normalize() };
+        
+        simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
+
+        int width = m_frameBuffer.getWidth();
+        int height = m_frameBuffer.getHeight();
+
+        for (const auto& p : particlePool.getParticles()) {
+            if (!p.isAlive()) continue;
+
+            float s = p.size * 0.5f;
+
+            // Build the 4 corners of the particle billboard quad in 3D world space facing the camera
+            simd::Vec4 p0_world{ p.position.getX() - camRight.getX() * s - camUp.getX() * s,
+                                 p.position.getY() - camRight.getY() * s - camUp.getY() * s,
+                                 p.position.getZ() - camRight.getZ() * s - camUp.getZ() * s, 1.0f };
+            simd::Vec4 p1_world{ p.position.getX() + camRight.getX() * s - camUp.getX() * s,
+                                 p.position.getY() + camRight.getY() * s - camUp.getY() * s,
+                                 p.position.getZ() + camRight.getZ() * s - camUp.getZ() * s, 1.0f };
+            simd::Vec4 p2_world{ p.position.getX() + camRight.getX() * s + camUp.getX() * s,
+                                 p.position.getY() + camRight.getY() * s + camUp.getY() * s,
+                                 p.position.getZ() + camRight.getZ() * s + camUp.getZ() * s, 1.0f };
+            simd::Vec4 p3_world{ p.position.getX() - camRight.getX() * s + camUp.getX() * s,
+                                 p.position.getY() - camRight.getY() * s + camUp.getY() * s,
+                                 p.position.getZ() - camRight.getZ() * s + camUp.getZ() * s, 1.0f };
+
+            // Transform into clip space using your VP matrix
+            simd::Vec4 c0 = VP * p0_world;
+            simd::Vec4 c1 = VP * p1_world;
+            simd::Vec4 c2 = VP * p2_world;
+            simd::Vec4 c3 = VP * p3_world;
+
+            auto toScreenVertex = [&](const simd::Vec4& clip, std::pair<float, float> uv) -> ScreenVertex {
+                float inv = 1.0f / clip.getW();
+                int sx = static_cast<int>((clip.getX() * inv + 1.0f) * 0.5f * width);
+                int sy = static_cast<int>((1.0f - (clip.getY() * inv + 1.0f) * 0.5f) * height);
+                float sz = clip.getZ() * inv;
+                return { sx, sy, sz, inv, uv, {0.f, 0.f, 1.f} };
+                };
+
+            ScreenVertex sv0 = toScreenVertex(c0, { 0.f, 0.f });
+            ScreenVertex sv1 = toScreenVertex(c1, { 1.f, 0.f });
+            ScreenVertex sv2 = toScreenVertex(c2, { 1.f, 1.f });
+            ScreenVertex sv3 = toScreenVertex(c3, { 0.f, 1.f });
+
+            // Push the two triangles making up the billboard quad into m_trianglesToRender
+            if (barycentricWeights(sv0.x, sv0.y, sv1.x, sv1.y, sv2.x, sv2.y) > 0) {
+                m_trianglesToRender.push_back({ {sv0, sv1, sv2}, p.mat });
+            }
+            if (barycentricWeights(sv0.x, sv0.y, sv2.x, sv2.y, sv3.x, sv3.y) > 0) {
+                m_trianglesToRender.push_back({ {sv0, sv2, sv3}, p.mat });
+            }
+        }
     }
 
     void Renderer::threadLoop(int threadId)

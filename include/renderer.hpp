@@ -11,6 +11,7 @@
 #include "camera.hpp"
 #include "texture.hpp"
 #include "material.hpp"
+#include "Particle.hpp"
 
 namespace AC_Engine
 {
@@ -46,6 +47,8 @@ namespace AC_Engine
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
         void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
         void renderObjects(std::vector<renderObject>& renderObjects, Camera& cam);
+
+        void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
     private:
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;
