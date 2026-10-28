@@ -4,12 +4,13 @@ namespace AC_Engine
 {
     FrameBuffer::FrameBuffer(int width, int height) : m_width(width), m_height(height)
     {
-        m_prixels.resize(m_width * m_height, 0);
+        m_pixels.resize(m_width * m_height, 0);
+        m_UiPixels.resize((m_width) * m_height, 0);
         m_zBuffer.resize(m_width * m_height, 1e30f);
 
-        for (std::size_t i = 0; i < m_prixels.size(); ++i) 
+        for (std::size_t i = 0; i < m_pixels.size(); ++i) 
         {
-            m_prixels[i] = 0x00FF0000; // Set all pixels to opaque blue for framebuffer size testing
+            m_pixels[i] = 0x00FF0000; // Set all pixels to opaque blue for framebuffer size testing
         }
     }
 
@@ -20,7 +21,7 @@ namespace AC_Engine
         if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
             return; // Out of bounds
         }
-        m_prixels[y * m_width + x] = color;
+        m_pixels[y * m_width + x] = color;
     }
 
     void FrameBuffer::update(int width, int height, float clearColor[4])
@@ -40,14 +41,15 @@ namespace AC_Engine
         // For now, we'll just resize the pixel buffer to match the current framebuffer size.
         m_width = width;
         m_height = height;
-        m_prixels.resize(m_width * m_height);
+        m_pixels.resize(m_width * m_height);
+        m_UiPixels.resize((m_width) * m_height);
         m_zBuffer.resize(m_width * m_height);
     }
 
     void FrameBuffer::clear()
     {
-        std::fill(m_prixels.begin(), m_prixels.end(), m_clearColor ? m_clearColor : 0x00000000);
-
+        std::fill(m_pixels.begin(), m_pixels.end(), m_clearColor ? m_clearColor : 0x00000000);
+        std::fill(m_UiPixels.begin(), m_UiPixels.end(), 0x99000000);
     }
     void FrameBuffer::clearZBuffer()
     {

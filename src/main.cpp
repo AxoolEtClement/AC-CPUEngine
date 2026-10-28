@@ -7,16 +7,22 @@
 #include "cameraManager.hpp"
 #include "objparser.hpp"
 #include "texture.hpp"
+#include "font.hpp"
+#include "material.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
 
 int main() {
+    MaterialLibrary materialLibrary;
+    Material mat;
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
     AC_Engine::FrameBuffer frameBuffer(640, 480);
-    AC_Engine::Renderer renderer(frameBuffer);
+    AC_Engine::Renderer renderer(frameBuffer,materialLibrary);
     AC_Engine::gui gui;
     gui.init(window.getWindow());
+
+    AC_Engine::CustomUI customUI;
 
     AC_Engine::CameraManager cam{};
     cam.createCamera(AC_Engine::FixedCamera{});
@@ -33,17 +39,25 @@ int main() {
     Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
     std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
 
-    std::vector<std::pair<renderObject, Texture>> renderObjects = { {obj, texture} };
+    mat.diffuseMap = std::make_shared<Texture>(texture);
+    mat.shininess  = 32.f;
+    mat.buildSpecLut();
+
+    obj.materialId = materialLibrary.add(mat);
+    std::vector<renderObject> renderObjects = {obj};
+
     // Main loop
     while (!window.shouldClose()) 
     {
-        renderObjects[0].first.modelMatrix *= rotation;
+        renderObjects[0].modelMatrix *= rotation;
         window.pollEvents();
+        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
         gui.newFrame();
-        cam.getActiveCamera().updateInfos(gui.getFrameBufferData().width, gui.getFrameBufferData().height, 90.f, 0.1f, 100.f);
-        frameBuffer.update(gui.getFrameBufferData().width, gui.getFrameBufferData().height, gui.getFrameBufferData().clearColor); // Update the framebuffer in case the window size has changed
+        cam.getActiveCamera().updateInfos(window.getWidth(), window.getHeight(), 90.f, 0.1f, 100.f);
+        frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
         renderer.renderObjects(renderObjects, cam.getActiveCamera());
-        gui.render(frameBuffer);
+        renderer.renderFrame();
+        //gui.render(frameBuffer);
         window.swapBuffers();
         frameBuffer.clear();
     }

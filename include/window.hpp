@@ -16,6 +16,18 @@ namespace AC_Engine
         void pollEvents();
 
         GLFWwindow* getWindow() const { return window; }
+        int getWidth() const
+        {
+            int w = 0, h = 0;
+            glfwGetWindowSize(window, &w, &h);
+            return w;
+        }
+        int getHeight() const
+        {
+            int w = 0, h = 0;
+            glfwGetWindowSize(window, &w, &h);
+            return h;
+        }
 
     private:
         GLFWwindow* window;

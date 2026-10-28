@@ -8,6 +8,7 @@
 #include <chrono>
 #include <vector>
 #include <numeric>
+#include "font.hpp"
 
 namespace AC_Engine
 {
@@ -72,5 +73,21 @@ namespace AC_Engine
         int m_sceneWidth = 640;
         int m_sceneHeight = 480;
         float m_clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    };
+
+    class CustomUI
+    {
+    public:
+        CustomUI();
+        ~CustomUI() = default;
+        // dst = buffer RGBA8 (4 octets/pixel), origine en haut à gauche
+        void drawText(uint8_t* dst, int dstW, int dstH,
+                      const char* text, float x, float y,
+                      uint32_t color = 0xFFFFFFFF) const;
+        bool isFontLoaded() const { return m_fontLoaded; }
+        
+    private:
+        Font m_font;
+        bool m_fontLoaded = false;
     };
 }

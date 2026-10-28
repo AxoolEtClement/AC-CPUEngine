@@ -117,4 +117,77 @@ namespace AC_Engine
         ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
+
+
+    CustomUI::CustomUI()
+    {
+        m_fontLoaded = m_font.Load("/home/clement/dev/AC-CPUEngine/assets/CreatoDisplay-Regular.otf", 16);
+        if (!m_fontLoaded)
+            fprintf(stderr, "Impossible de charger la police\n");
+    }
+
+    void CustomUI::drawText(uint8_t* dst, int dstW, int dstH,
+                            const char* text, float x, float y, uint32_t color) const
+    {
+        if (!m_fontLoaded || !dst) return;
+        auto mark = [&](int x0, int y0, uint8_t r, uint8_t g, uint8_t b)
+        {
+            for (int j = 0; j < 8; ++j)
+                for (int i = 0; i < 8; ++i)
+                {
+                    int px = x0 + i, py = y0 + j;
+                    if (px < 0 || px >= dstW || py < 0 || py >= dstH) continue;
+                    uint8_t* d = &dst[(py * dstW + px) * 4];
+                    d[0] = r; d[1] = g; d[2] = b; d[3] = 255;
+                }
+        };
+        mark(0,        0,        255, 0, 0);   // rouge : coin (0,0) du buffer
+        mark(dstW - 8, 0,        0, 255, 0);   // vert  : coin (dstW-1, 0)
+        mark(0,        dstH - 8, 0, 0, 255);   // bleu  : coin (0, dstH-1)
+
+        const float cr = (color >> 24) & 0xFF;
+        const float cg = (color >> 16) & 0xFF;
+        const float cb = (color >>  8) & 0xFF;
+        const float ca =  color        & 0xFF;
+
+        for (; *text; ++text)
+        {
+            int c = static_cast<unsigned char>(*text);
+            if (c < 32 || c >= 128) continue;
+            const stbtt_bakedchar& g = m_font.m_chars[c - 32];
+
+            const int gw = g.x1 - g.x0;
+            const int gh = g.y1 - g.y0;
+            const int px = static_cast<int>(x + g.xoff);
+            const int py = static_cast<int>(y + g.yoff);
+
+            for (int j = 0; j < gh; ++j)
+            {
+                const int dy = py + j;
+                if (dy < 0 || dy >= dstH) continue;
+
+                for (int i = 0; i < gw; ++i)
+                {
+                    const int dx = px + i;
+                    if (dx < 0 || dx >= dstW) continue;
+
+                    const int cov = m_font.m_atlas[(g.y0 + j) * Font::ATLAS_W + (g.x0 + i)];
+                    if (!cov) continue;
+
+                    const int oy = dstH - 1 - dy;
+                    uint8_t* d = &dst[(oy * dstW + dx) * 4];
+                    const float a  = (cov / 255.0f) * (ca / 255.0f);
+                    const float da = d[3] / 255.0f;
+                    const float oa = a + da * (1.0f - a);
+                    if (oa <= 0.0f) continue;
+
+                    d[0] = static_cast<uint8_t>((cr * a + d[0] * da * (1.0f - a)) / oa);
+                    d[1] = static_cast<uint8_t>((cg * a + d[1] * da * (1.0f - a)) / oa);
+                    d[2] = static_cast<uint8_t>((cb * a + d[2] * da * (1.0f - a)) / oa);
+                    d[3] = static_cast<uint8_t>(oa * 255.0f);
+                }
+            }
+            x += g.xadvance;
+        }
+    }
 }

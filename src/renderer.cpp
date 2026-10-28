@@ -3,6 +3,38 @@
 
 namespace AC_Engine
 {
+    Renderer::Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary)
+        : m_frameBuffer(frameBuffer), m_materialLibrary(materialLibrary), 
+        m_numThreads(std::max(2u, std::thread::hardware_concurrency()))
+    {
+        for (int i = 0; i < m_numThreads; ++i) 
+        {
+            m_threads.emplace_back([this, i]() {
+                threadLoop(i);
+            });
+        }
+		std::cout << m_numThreads << " threads created for rendering." << std::endl;
+    }
+    Renderer::~Renderer()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_stopThreads = true;
+        }
+        m_cvStartThreads.notify_all();
+        for (auto& t : m_threads) {
+            if (t.joinable()) t.join();
+        }
+    }
+    void Renderer::renderFrame()
+    {
+        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getPixels() );
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
+        glDisable(GL_BLEND);
+    }
+
     void Renderer::drawLine(int x0, int y0, int x1, int y1, unsigned int color)
     {
         // Bresenham's line algorithm
@@ -133,68 +165,77 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjects(std::vector<std::pair<renderObject, Texture>>& renderObjects, Camera cam)
+    void Renderer::renderObjects(std::vector<renderObject>& objects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
-        simd::Vec3f lightDir{ 0.57735f, 0.57735f, 0.57735f };
-		simd::Vec3f halfVector{ (lightDir - simd::Vec3f{ 0.f, 0.f, 1.f }).Normalize() };
+
+        Light light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, {1.f, 1.f, 1.f}, ambiantLightIntensity };
+        //simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
+        //V.Normalize();
+
+        m_trianglesToRender.clear();
 
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
-        for (const auto& obj : renderObjects) {
-            //std::vector<bool> visible;
-            simd::Matrix4x4 MVP{ VP * obj.first.modelMatrix };
+
+        for (const auto& obj : objects) {
+            const Material& mat = m_materialLibrary.get(obj.materialId);
+            simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
 
             std::vector<simd::Vec4> clipCoord{};
-            std::vector<float> ndc_z{};
-            std::vector<float> ndc_w{};
-            std::vector<int> screen_x{};
-            std::vector<int> screen_y{};
-			std::vector<simd::Vec3f> worldNormals{};
+            std::vector<simd::Vec3f> worldNormals{};
 
-            for (const auto& vertex : obj.first.vertices)
-            {
+            for (const auto& vertex : obj.vertices) {
                 simd::Vec4 clip{ MVP * vertex.pos };
-                
-                float inv = 1.f / clip.getW();
-                screen_x.push_back(static_cast<int>((clip.getX() * inv + 1.0f) * 0.5f * width));
-                screen_y.push_back(static_cast<int>((1.f - clip.getY() * inv) * 0.5f * height));
-                ndc_z.push_back(clip.getZ() * inv);
-                ndc_w.push_back(inv);
-                //visible.push_back(true);
-				worldNormals.push_back(obj.first.modelMatrix.TransformDirection(vertex.normal).Normalize());
-                clipCoord.push_back(clip);                
+                clipCoord.push_back(clip);
+                worldNormals.push_back(obj.modelMatrix.TransformDirection(vertex.normal).Normalize());
             }
 
-            for (int f = 0; f < obj.first.faces.size(); f++)
-            {
-                Vertex v0{};
-                Vertex v1{};
-                Vertex v2{};
+            for (size_t f = 0; f < obj.faces.size(); f++) {
+                Vertex v0{}, v1{}, v2{};
+                v0.pos = clipCoord[obj.faces[f][0]];
+                v1.pos = clipCoord[obj.faces[f][1]];
+                v2.pos = clipCoord[obj.faces[f][2]];
 
-                v0.pos = clipCoord[obj.first.faces[f][0]];
-                v1.pos = clipCoord[obj.first.faces[f][1]];
-                v2.pos = clipCoord[obj.first.faces[f][2]];
+                int ta = obj.face_uvs[f * 3 + 0];
+                int tb = obj.face_uvs[f * 3 + 1];
+                int tc = obj.face_uvs[f * 3 + 2];
+                v0.texCoord = obj.uvs[ta];
+                v1.texCoord = obj.uvs[tb];
+                v2.texCoord = obj.uvs[tc];
 
-                int ta = obj.first.face_uvs[f * 3 + 0];
-                int tb = obj.first.face_uvs[f * 3 + 1];
-                int tc = obj.first.face_uvs[f * 3 + 2];
-                v0.texCoord = obj.first.uvs[ta];
-                v1.texCoord = obj.first.uvs[tb];
-                v2.texCoord = obj.first.uvs[tc];
-
-                v0.normal = worldNormals[obj.first.faces[f][0]];
-                v1.normal = worldNormals[obj.first.faces[f][1]];
-                v2.normal = worldNormals[obj.first.faces[f][2]];
+                v0.normal = worldNormals[obj.faces[f][0]];
+                v1.normal = worldNormals[obj.faces[f][1]];
+                v2.normal = worldNormals[obj.faces[f][2]];
 
                 std::vector<Vertex> clippedVertices{};
                 clipTriangle({ v0, v1, v2 }, clippedVertices);
-                for (size_t i = 0; i < clippedVertices.size() / 3; i++)
-                {
-                    projectAndDraw({ clippedVertices[i * 3 + 0], clippedVertices[i * 3 + 1] , clippedVertices[i * 3 + 2] }, obj.second, lightDir, halfVector);
+
+                for (size_t i = 0; i < clippedVertices.size() / 3; i++) {
+                    ScreenVertex sv0 = projectVertex(clippedVertices[i * 3 + 0], width, height);
+                    ScreenVertex sv1 = projectVertex(clippedVertices[i * 3 + 1], width, height);
+                    ScreenVertex sv2 = projectVertex(clippedVertices[i * 3 + 2], width, height);
+
+                    if (barycentricWeights(sv0.x, sv0.y, sv1.x, sv1.y, sv2.x, sv2.y) > 0) {
+                        m_trianglesToRender.push_back({ {sv0, sv1, sv2}, &mat });
+                    }
                 }
             }
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_activeThreads = m_numThreads;
+            m_frameCounter++;
+        }
+        m_cvStartThreads.notify_all();
+
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cvThreadsDone.wait(lock, [this]() {
+                return m_activeThreads == 0;
+                });
         }
     }
 
@@ -315,7 +356,7 @@ namespace AC_Engine
         int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, simd::Vec3f n0,
         int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, simd::Vec3f n1,
         int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, simd::Vec3f n2,
-        const Texture& texture, simd::Vec3f L, simd::Vec3f H)
+        const Material& mat, const Light& light, simd::Vec3f V)
     {
         int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
         if (area <= 0) return;
@@ -326,6 +367,7 @@ namespace AC_Engine
         int maxY = std::min(m_frameBuffer.getHeight() - 1, std::max({ y0, y1, y2 }));
 
         float invArea = 1.f / static_cast<float>(area);
+        simd::Vec3f H = (light.dir + V).Normalize();
 
         float u0w = uv0.first * iw0, v0w = uv0.second * iw0;
         float u1w = uv1.first * iw1, v1w = uv1.second * iw1;
@@ -418,20 +460,28 @@ namespace AC_Engine
                     continue;
                 }
 
-                n.Normalize();
-				float ndotl = n.Dot(L);
+                n = n.Normalize();
+                float ndotl = std::max(0.f, n.Dot(light.dir));
+                float ndoth = std::clamp(n.Dot(H), 0.f, 1.f);
+                float spec  = (ndotl > 0.f) ? mat.specLut[(int)(ndoth * 255.f)] : 0.f;
+                float k     = light.ambient + (1.f - light.ambient) * ndotl;
 
-				if (ndotl < 0.0f) ndotl = 0.0f;
-				float diffuse = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
+                float tr = 1.f, tg = 1.f, tb = 1.f;
+                if (mat.diffuseMap) {
+                    uint32_t c = TextureLoader::sampleTextureBilinear(*mat.diffuseMap, u, v);
+                    tr = (c & 0xFF) / 255.f;
+                    tg = ((c >> 8) & 0xFF) / 255.f;
+                    tb = ((c >> 16) & 0xFF) / 255.f;
+                }
 
-				float ndotH = n.Dot(H);
-				if (ndotH < 0.0f) ndotH = 0.0f;
-				float specular = pow32(ndotH) * specularStrength;
+                float r = mat.diffuse.r * tr * k + mat.specular.r * spec + mat.emissive.r;
+                float g = mat.diffuse.g * tg * k + mat.specular.g * spec + mat.emissive.g;
+                float b = mat.diffuse.b * tb * k + mat.specular.b * spec + mat.emissive.b;
+
+                auto to8 = [](float x) { return (uint32_t)(std::clamp(x, 0.f, 1.f) * 255.f + 0.5f); };
 
                 m_frameBuffer.getZBuffer()[idx] = z;
-
-                uint32_t color = TextureLoader::sampleTextureBilinear(texture, u, v);
-                m_frameBuffer.setPixel(x, y, color_phong(color, diffuse, specular));
+                m_frameBuffer.setPixel(x, y, 0xFF000000 | (to8(b) << 16) | (to8(g) << 8) | to8(r));
 
                 e0 += A0; e1 += A1; e2 += A2;
                 z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx;
@@ -447,6 +497,144 @@ namespace AC_Engine
             row_vw += dvwdy;
             row_iw += diwdy;
 			row_nw += dnwdy;
+        }
+    }
+
+    void Renderer::drawTrianglePhongInTile(
+        const ScreenVertex& v0, const ScreenVertex& v1, const ScreenVertex& v2,
+        const Material& mat, const Light& light,
+        int tileMinY, int tileMaxY)
+    {
+        int x0 = v0.x, y0 = v0.y;
+        int x1 = v1.x, y1 = v1.y;
+        int x2 = v2.x, y2 = v2.y;
+
+        int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
+        if (area <= 0) return;
+
+        int minX = std::max(0, std::min({ x0, x1, x2 }));
+        int maxX = std::min(m_frameBuffer.getWidth() - 1, std::max({ x0, x1, x2 }));
+        int minY = std::max(tileMinY, std::min({ y0, y1, y2 }));
+        int maxY = std::min(tileMaxY, std::max({ y0, y1, y2 }));
+
+        if (minX > maxX || minY > maxY) return;
+
+        float z0 = v0.z, z1 = v1.z, z2 = v2.z;
+        float iw0 = v0.invW, iw1 = v1.invW, iw2 = v2.invW;
+
+        float invArea = 1.f / static_cast<float>(area);
+        simd::Vec3f H = (light.dir + simd::Vec3f{ 1.f, 1.f, 1.f }).Normalize(); // TODO change to use cam pos
+
+        float u0w = v0.uv.first * iw0, v0w = v0.uv.second * iw0;
+        float u1w = v1.uv.first * iw1, v1w = v1.uv.second * iw1;
+        float u2w = v2.uv.first * iw2, v2w = v2.uv.second * iw2;
+
+        simd::Vec3f n0w = v0.normal * iw0;
+        simd::Vec3f n1w = v1.normal * iw1;
+        simd::Vec3f n2w = v2.normal * iw2;
+
+        int A0 = y1 - y2, B0 = x2 - x1;
+        int A1 = y2 - y0, B1 = x0 - x2;
+        int A2 = y0 - y1, B2 = x1 - x0;
+
+        float dzdx = (A0 * z0 + A1 * z1 + A2 * z2) * invArea;
+        float dzdy = (B0 * z0 + B1 * z1 + B2 * z2) * invArea;
+
+        float duwdx = (A0 * u0w + A1 * u1w + A2 * u2w) * invArea;
+        float duwdy = (B0 * u0w + B1 * u1w + B2 * u2w) * invArea;
+
+        float dvwdx = (A0 * v0w + A1 * v1w + A2 * v2w) * invArea;
+        float dvwdy = (B0 * v0w + B1 * v1w + B2 * v2w) * invArea;
+
+        simd::Vec3f dnwdx = (A0 * n0w + A1 * n1w + A2 * n2w) * invArea;
+        simd::Vec3f dnwdy = (B0 * n0w + B1 * n1w + B2 * n2w) * invArea;
+
+        float diwdx = (A0 * iw0 + A1 * iw1 + A2 * iw2) * invArea;
+        float diwdy = (B0 * iw0 + B1 * iw1 + B2 * iw2) * invArea;
+
+        // Start evaluation from minX, minY of the tile/triangle intersection
+        int start_e0 = barycentricWeights(x1, y1, x2, y2, minX, minY);
+        int start_e1 = barycentricWeights(x2, y2, x0, y0, minX, minY);
+        int start_e2 = barycentricWeights(x0, y0, x1, y1, minX, minY);
+
+        float init_e0 = start_e0 * invArea;
+        float init_e1 = start_e1 * invArea;
+        float init_e2 = start_e2 * invArea;
+
+        float row_z = init_e0 * z0 + init_e1 * z1 + init_e2 * z2;
+        float row_uw = init_e0 * u0w + init_e1 * u1w + init_e2 * u2w;
+        float row_vw = init_e0 * v0w + init_e1 * v1w + init_e2 * v2w;
+        float row_iw = init_e0 * iw0 + init_e1 * iw1 + init_e2 * iw2;
+        simd::Vec3f row_nw = init_e0 * n0w + init_e1 * n1w + init_e2 * n2w;
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            int e0 = start_e0;
+            int e1 = start_e1;
+            int e2 = start_e2;
+
+            float z = row_z;
+            float uw = row_uw;
+            float vw = row_vw;
+            float iw = row_iw;
+            simd::Vec3f nw = row_nw;
+
+            bool inside = false;
+
+            for (int x = minX; x <= maxX; x++)
+            {
+                if ((e0 | e1 | e2) < 0)
+                {
+                    if (inside) break;
+                    e0 += A0; e1 += A1; e2 += A2;
+                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+                    continue;
+                }
+                inside = true;
+                int idx = y * m_frameBuffer.getWidth() + x;
+
+                // Note: If multiple threads write to adjacent boundary pixels sharing a Z-buffer, 
+                // ensure bounds don't overlap, or use atomic checks if needed. 
+                // With clean horizontal slices, threads own unique rows `y`, eliminating z-buffer data races entirely!
+                if (z >= m_frameBuffer.getZBuffer()[idx])
+                {
+                    e0 += A0; e1 += A1; e2 += A2;
+                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+                    continue;
+                }
+
+                float u = uw / iw;
+                float v = vw / iw;
+                simd::Vec3f n = (nw / iw).Normalize();
+
+                float ndotl = std::max(0.f, n.Dot(light.dir));
+                float ndoth = std::clamp(n.Dot(H), 0.f, 1.f);
+                float spec = (ndotl > 0.f) ? mat.specLut[(int)(ndoth * 255.f)] : 0.f;
+                float k = light.ambient + (1.f - light.ambient) * ndotl;
+
+                float tr = 1.f, tg = 1.f, tb = 1.f;
+                if (mat.diffuseMap) {
+                    uint32_t c = TextureLoader::sampleTextureBilinear(*mat.diffuseMap, u, v);
+                    tr = (c & 0xFF) / 255.f;
+                    tg = ((c >> 8) & 0xFF) / 255.f;
+                    tb = ((c >> 16) & 0xFF) / 255.f;
+                }
+
+                float r = mat.diffuse.r * tr * k + mat.specular.r * spec + mat.emissive.r;
+                float g = mat.diffuse.g * tg * k + mat.specular.g * spec + mat.emissive.g;
+                float b = mat.diffuse.b * tb * k + mat.specular.b * spec + mat.emissive.b;
+
+                auto to8 = [](float val) { return (uint32_t)(std::clamp(val, 0.f, 1.f) * 255.f + 0.5f); };
+
+                m_frameBuffer.getZBuffer()[idx] = z;
+                m_frameBuffer.setPixel(x, y, 0xFF000000 | (to8(b) << 16) | (to8(g) << 8) | to8(r));
+
+                e0 += A0; e1 += A1; e2 += A2;
+                z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+            }
+
+            start_e0 += B0; start_e1 += B1; start_e2 += B2;
+            row_z += dzdy; row_uw += duwdy; row_vw += dvwdy; row_iw += diwdy; row_nw += dnwdy;
         }
     }
 
@@ -526,9 +714,17 @@ namespace AC_Engine
                 out.push_back(poly[3]);
             }
         }
+        if (poly.size() >= 3) 
+        {
+            out.push_back(poly[0]); out.push_back(poly[1]); out.push_back(poly[2]);
+        }
+        if (poly.size() == 4) 
+        {
+            out.push_back(poly[0]); out.push_back(poly[2]); out.push_back(poly[3]);
+        }
     }
 
-    void Renderer::projectAndDraw(const std::vector<Vertex>& triangle, const Texture& tex, simd::Vec3f L, simd::Vec3f H)
+    void Renderer::projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V)
     {
         std::array<int, 3> screen_x{};
         std::array<int, 3> screen_y{};
@@ -550,7 +746,7 @@ namespace AC_Engine
             screen_x[0], screen_y[0], ndc_z[0], inv_w[0], triangle[0].texCoord, triangle[0].normal,
             screen_x[1], screen_y[1], ndc_z[1], inv_w[1], triangle[1].texCoord, triangle[1].normal,
             screen_x[2], screen_y[2], ndc_z[2], inv_w[2], triangle[2].texCoord, triangle[2].normal,
-            tex, L, H
+            mat, light, V
         );
 
         //for (size_t f = 0; f < obj.first.faces.size(); f++) {
@@ -588,6 +784,50 @@ namespace AC_Engine
         //}
     }
 
+    void Renderer::threadLoop(int threadId)
+    {
+		uint64_t lastFrame = 0;
+        while (true) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            m_cvStartThreads.wait(lock, [this, lastFrame]() {
+                return m_stopThreads || m_frameCounter > lastFrame;
+                });
+
+            if (m_stopThreads) break;
+
+            lastFrame = m_frameCounter;
+
+            lock.unlock();
+
+            renderTile(threadId);
+
+            lock.lock();
+            m_activeThreads--;
+            if (m_activeThreads == 0) 
+                {
+                m_cvThreadsDone.notify_one();
+			}
+        }
+    }
+
+    void Renderer::renderTile(int threadId)
+    {
+		int height = m_frameBuffer.getHeight();
+		int sliceHeight = height / m_numThreads;
+		int startY = threadId * sliceHeight;
+		int endY = (threadId == m_numThreads - 1) ? height - 1 : startY + sliceHeight - 1;
+
+        for (const auto& tri : m_trianglesToRender)
+        {
+            drawTrianglePhongInTile(
+                tri.vertices[0], tri.vertices[1], tri.vertices[2],
+                *tri.material, m_light,
+                startY, endY
+            );
+		}
+    }
+
     void Renderer::drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2)
     {
         int area = barycentricWeights(x0, y0, x1, y1, x2, y2);
@@ -621,5 +861,13 @@ namespace AC_Engine
 
                 m_frameBuffer.setPixel(x, y, 0xFFFFFFFF);
             }
+    }
+
+    ScreenVertex Renderer::projectVertex(const Vertex& v, int width, int height) {
+        float inv = 1.0f / v.pos.getW();
+        int sx = static_cast<int>((v.pos.getX() * inv + 1.0f) * 0.5f * width);
+        int sy = static_cast<int>((1.0f - (v.pos.getY() * inv + 1.0f) * 0.5f) * height);
+        float sz = v.pos.getZ() * inv;
+        return { sx, sy, sz, inv, v.texCoord, v.normal };
     }
 }
