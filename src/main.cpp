@@ -7,6 +7,7 @@
 #include "cameraManager.hpp"
 #include "objparser.hpp"
 #include "texture.hpp"
+#include "proceduralTerrain.hpp"
 #include <iostream>
 
 using namespace std::string_literals;
@@ -24,7 +25,13 @@ int main() {
 
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
+
+    AC_Engine::ProceduralTerrain terrain(100, 100);
+    terrain.generateTerrain(0.05f, 0.5f, 4);
+    terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
     renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
+    renderObject terrainObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/terrain.obj"s);
+    std::cout << "Terrain vertices: " << terrainObj.vertices.size() << std::endl;
 	obj.initNormals();
 
     std::cout << "Vertices: " << obj.vertices.size() << std::endl;
@@ -33,7 +40,7 @@ int main() {
     Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
     std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
 
-    std::vector<std::pair<renderObject, Texture>> renderObjects = { {obj, texture} };
+    std::vector<std::pair<renderObject, Texture>> renderObjects = { {terrainObj, texture} };
     // Main loop
     while (!window.shouldClose()) 
     {
