@@ -4,6 +4,7 @@ namespace AC_Engine::ECS
 {
 	struct Entity
 	{
-		int id;
+		unsigned int id;
+		unsigned int gen;
 	};
 }

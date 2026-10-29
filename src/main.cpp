@@ -12,6 +12,7 @@
 #include "Particle.hpp"
 #include "proceduralTerrain.hpp"
 #include <iostream>
+#include "ECS/registry.hpp"
 
 using namespace std::string_literals;
 
