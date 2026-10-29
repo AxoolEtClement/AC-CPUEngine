@@ -11,6 +11,7 @@
 #include "material.hpp"
 #include "Particle.hpp"
 #include <iostream>
+#include "ECS/registry.hpp"
 
 using namespace std::string_literals;
 
