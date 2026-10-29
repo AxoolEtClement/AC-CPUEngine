@@ -45,7 +45,7 @@ namespace AC_Engine
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
-        void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera cam);
+        void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera& cam);
         void renderObjects(std::vector<renderObject>& renderObjects, Camera& cam);
 
         void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);

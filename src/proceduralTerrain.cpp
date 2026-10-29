@@ -19,12 +19,21 @@ namespace AC_Engine
         }
     }
 
-    void ProceduralTerrain::generateTerrain(float scale, float persistence, int octaves)
+    void ProceduralTerrain::generateTerrain(float scale, float persistence, int octaves, float heightScale)
     {
-        // Implementation for generating procedural terrain
-
         if (scale <= 0.0f) scale = 0.005f;
-
+    
+        // Somme des amplitudes, pour garder un résultat entre -1 et 1
+        float maxAmplitude = 0.0f;
+        {
+            float a = 1.0f;
+            for (int o = 0; o < octaves; ++o) { maxAmplitude += a; a *= persistence; }
+        }
+    
+        // Décalage non entier, pour éviter les zéros au coin (0,0)
+        const float offsetX = 37.31f;
+        const float offsetY = 91.77f;
+    
         for (int y = 0; y < m_height; ++y)
         {
             for (int x = 0; x < m_width; ++x)
@@ -32,21 +41,18 @@ namespace AC_Engine
                 float amplitude = 1.0f;
                 float frequency = 1.0f;
                 float noiseHeight = 0.0f;
-
+            
                 for (int o = 0; o < octaves; ++o)
                 {
-                    float sampleX = static_cast<float>(x) * scale * frequency;
-                    float sampleY = static_cast<float>(y) * scale * frequency;
-
-                    float perlinValue = perlin(sampleX, sampleY);
-                    noiseHeight += perlinValue * amplitude;
-
+                    float sampleX = x * scale * frequency + offsetX;
+                    float sampleY = y * scale * frequency + offsetY;
+                
+                    noiseHeight += perlin(sampleX, sampleY) * amplitude;
                     amplitude *= persistence;
                     frequency *= 2.0f;
                 }
-
-                int index = y * m_width + x;
-                m_heightmap[index].y = noiseHeight;
+            
+                m_heightmap[y * m_width + x].y = (noiseHeight / maxAmplitude) * heightScale;
             }
         }
     }
@@ -73,7 +79,6 @@ namespace AC_Engine
 
     void ProceduralTerrain::generateObj(const std::string& filename)
     {
-        // 1. Ouvrir le fichier en écriture
         std::ofstream outFile(filename);
         if (!outFile.is_open())
         {
@@ -81,54 +86,61 @@ namespace AC_Engine
             return;
         }
 
-        // Commentaire d'en-tête (Optionnel)
+        float minH = m_heightmap[0].y, maxH = m_heightmap[0].y;
+        for (const auto& p : m_heightmap)
+        {
+            minH = std::min(minH, p.y);
+            maxH = std::max(maxH, p.y);
+        }
+        const float range = std::max(maxH - minH, 0.0001f);
+
         outFile << "# AC_Engine Procedural Terrain OBJ Export\n";
         outFile << "# Vertices: " << m_width * m_height << "\n";
         outFile << "# Faces: " << (m_width - 1) * (m_height - 1) * 2 << "\n\n";
 
-        // 2. Écrire tous les sommets (Vertices)
-        // Format : v X Y Z
-        // Attention : Dans votre structure, vertex.y contient la HAUTEUR. 
-        // En 3D conventionnelle, l'axe vertical est souvent Y ou Z. Ici on mappe : 3D_X = x, 3D_Y = hauteur, 3D_Z = grille_y
+        // 1. Sommets : v X Y Z  (3D_X = x, 3D_Y = hauteur, 3D_Z = ligne de la grille)
         for (int y = 0; y < m_height; ++y)
         {
             for (int x = 0; x < m_width; ++x)
             {
-                int index = y * m_width + x;
-                const auto& vertex = m_heightmap[index];
-
-                // Écriture du sommet : Position X, Hauteur Y, Position Z (la ligne de votre grille)
+                const auto& vertex = m_heightmap[y * m_width + x];
                 outFile << "v " << vertex.x << " " << vertex.y << " " << static_cast<float>(y) << "\n";
             }
         }
-
         outFile << "\n";
 
-        // 3. Générer les faces (Triangles)
-        // Format : f v1 v2 v3
-        // Note importante : Les index du format OBJ commencent obligatoirement à 1 !
+        // 2. Coordonnées de texture : vt u v  (un vt par sommet, même index que le v)
+        for (int y = 0; y < m_height; ++y)
+            for (int x = 0; x < m_width; ++x)
+            {
+                const float t = (m_heightmap[y * m_width + x].y - minH) / range; // 0..1
+
+                if      (t < 0.35f) outFile << "vt 0.25 0.75\n"; // eau
+                else if (t < 0.45f) outFile << "vt 0.75 0.75\n"; // sable
+                else if (t < 0.65f) outFile << "vt 0.25 0.25\n"; // herbe
+                else                outFile << "vt 0.75 0.25\n"; // roche
+            }
+        outFile << "\n";
+
+        // 3. Faces : f v/vt v/vt v/vt  (indices OBJ base 1)
         for (int y = 0; y < m_height - 1; ++y)
         {
             for (int x = 0; x < m_width - 1; ++x)
             {
-                // Calcul des index des 4 coins d'une cellule de la grille (Index C++ à base 0)
-                int topLeft     = y * m_width + x;
-                int topRight    = topLeft + 1;
-                int bottomLeft  = (y + 1) * m_width + x;
-                int bottomRight = bottomLeft + 1;
+                const int vTL = y * m_width + x + 1;
+                const int vTR = vTL + 1;
+                const int vBL = (y + 1) * m_width + x + 1;
+                const int vBR = vBL + 1;
 
-                // Conversion en index OBJ (base 1) en ajoutant +1
-                int vTL = topLeft + 1;
-                int vTR = topRight + 1;
-                int vBL = bottomLeft + 1;
-                int vBR = bottomRight + 1;
-
-                // Découpage de la cellule carrée en 2 triangles :
                 // Triangle 1 : Haut-Gauche -> Bas-Gauche -> Haut-Droite
-                outFile << "f " << vTL << " " << vBL << " " << vTR << "\n";
+                outFile << "f " << vTL << "/" << vTL << " "
+                                << vBL << "/" << vBL << " "
+                                << vTR << "/" << vTR << "\n";
 
                 // Triangle 2 : Haut-Droite -> Bas-Gauche -> Bas-Droite
-                outFile << "f " << vTR << " " << vBL << " " << vBR << "\n";
+                outFile << "f " << vTR << "/" << vTR << " "
+                                << vBL << "/" << vBL << " "
+                                << vBR << "/" << vBR << "\n";
             }
         }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "camera.hpp"
+#include <GLFW/glfw3.h>
 
 namespace AC_Engine
 {
@@ -8,6 +9,11 @@ namespace AC_Engine
      */
     class EditorCamera : public Camera
     {
+    public:
+        EditorCamera() = default;
+        ~EditorCamera() = default;
+
+        void update(GLFWwindow& window,float deltaTime) override;
 
     };
 }
