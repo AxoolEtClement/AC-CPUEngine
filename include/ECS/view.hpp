@@ -32,6 +32,7 @@ namespace AC_Engine::ECS
 
 	private:
 		std::tuple<SparseSet<Components>*...> m_sets;
+		size_t m_indexOfSmallestSet = 0;
 	};
 
 
@@ -41,7 +42,14 @@ namespace AC_Engine::ECS
 	inline View<Components...>::View(SparseSet<Components>*... sets)
 		: m_sets(sets...)
 	{
+		size_t minSize = std::min({ std::get<SparseSet<Components>*>(m_sets)->size()... });
+		for (size_t i = 0; i < std::tuple_size<typeof(m_sets)>; ++i)
+		{
+			if (std::get<i>(m_sets)->size() == minSize)
+				m_indexOfSmallestSet = i;
+		} // TODO : cleanup this thing
 	}
+
 	template<typename ...Components>
 	inline View<Components...>::Iterator::Iterator(std::tuple<SparseSet<Components>*...>& sets, unsigned int index)
 		: m_sets(sets), m_index(index)
@@ -69,7 +77,7 @@ namespace AC_Engine::ECS
 	template<typename ...Components>
 	inline std::tuple<Components&...> View<Components...>::Iterator::operator*() const
 	{
-		unsigned int entityID = std::get<0>(m_sets)->getEntityAt(m_index);
+		unsigned int entityID = std::get<m_indexOfSmallestSet>(m_sets)->getEntityAt(m_index);
 
 		return std::apply([entityID](SparseSet<Components>*... sets) {
 			return std::forward_as_tuple(sets->getComponent(entityID)...);
@@ -79,7 +87,7 @@ namespace AC_Engine::ECS
 	template<typename ...Components>
 	inline bool View<Components...>::Iterator::entityHasRequiredComponents() const
 	{
-		unsigned int entityID = std::get<0>(m_sets)->getEntityAt(m_index);
+		unsigned int entityID = std::get<m_indexOfSmallestSet>(m_sets)->getEntityAt(m_index);
 		return std::apply([entityID](SparseSet<Components>*... sets) {
 			return (... && sets->hasComponent(entityID));
 			}, m_sets

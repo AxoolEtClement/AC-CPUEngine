@@ -22,8 +22,9 @@ namespace AC_Engine::ECS
 		bool hasComponent(unsigned int entityID);
 		unsigned int getEntityAt(unsigned int denseIndex);
 		size_t size() override;
-
-		Component& addComponent(unsigned int entityID);
+		
+		template<typename... Args>
+		Component& addComponent(unsigned int entityID, Args... args);
 		Component& getComponent(unsigned int entityID);
 
 	private:
@@ -83,16 +84,19 @@ namespace AC_Engine::ECS
 		return nullptr;
 	}
 
+	
 	template<typename Component>
-	inline Component& SparseSet<Component>::addComponent(unsigned int entityID)
+	template<typename ...Args>
+	inline Component& SparseSet<Component>::addComponent(unsigned int entityID, Args ...args)
 	{
 		if (!m_sparse.contains(entityID))
 		{
 			size_t newIndex = m_dense.size();
 			m_dense.push_back(entityID);
-			m_components.emplace_back();
+			m_components.emplace_back(Component{ std::forward<Args>(args)... });
 			m_sparse[entityID] = newIndex;
 		}
 		return m_components[m_sparse[entityID]];
 	}
+
 }
