@@ -1,6 +1,21 @@
 #include "renderer.hpp"
 #include <iostream>
 
+static uint32_t blendOver(uint32_t src, uint32_t dst)   // formats AABBGGRR, alpha droit
+{
+    float sa = ((src >> 24) & 0xFF) / 255.f;
+    float da = ((dst >> 24) & 0xFF) / 255.f;
+    float oa = sa + da * (1.f - sa);
+    if (oa <= 0.f) return 0;
+
+    auto ch = [&](int shift) -> uint32_t {
+        float s = float((src >> shift) & 0xFF);
+        float d = float((dst >> shift) & 0xFF);
+        return (uint32_t)((s * sa + d * da * (1.f - sa)) / oa + 0.5f);
+    };
+    return ((uint32_t)(oa * 255.f + 0.5f) << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 namespace AC_Engine
 {
     Renderer::Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary)
@@ -32,6 +47,7 @@ namespace AC_Engine
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         //glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
+        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getTransparentPixels() );
         glDisable(GL_BLEND);
     }
 
@@ -167,6 +183,24 @@ namespace AC_Engine
 
     void Renderer::renderObjects(std::vector<renderObject>& objects, Camera& cam)
     {
+        std::vector<renderObject> OrderedObjectsTransparent;
+        std::vector<renderObject> OrderedObjects;
+        for (auto& object : objects) 
+        {
+            if (m_materialLibrary.get(object.materialId).opacity < 1.0f) 
+            {
+                OrderedObjectsTransparent.push_back(object);
+            } 
+            else 
+            {
+                OrderedObjects.insert(OrderedObjects.begin(), object);
+            }
+        }
+        std::sort(OrderedObjectsTransparent.begin(), OrderedObjectsTransparent.end(), [&cam](const renderObject& a, const renderObject& b) {
+            return cam.pos.DistanceSquared(a.modelMatrix.TransformPoint(simd::Vec3f{ 0.f, 0.f, 0.f })) >
+                   cam.pos.DistanceSquared(b.modelMatrix.TransformPoint(simd::Vec3f{ 0.f, 0.f, 0.f }));
+        });
+        OrderedObjects.insert(OrderedObjects.end(), OrderedObjectsTransparent.begin(), OrderedObjectsTransparent.end());
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
@@ -177,7 +211,7 @@ namespace AC_Engine
 
         simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
 
-        for (const auto& obj : objects) {
+        for (const auto& obj : OrderedObjects) {
             const Material& mat = m_materialLibrary.get(obj.materialId);
             simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
 
@@ -553,6 +587,10 @@ namespace AC_Engine
         int A1 = y2 - y0, B1 = x0 - x2;
         int A2 = y0 - y1, B2 = x1 - x0;
 
+        const int bias0 = (A0 > 0 || (A0 == 0 && B0 > 0)) ? 0 : -1;
+        const int bias1 = (A1 > 0 || (A1 == 0 && B1 > 0)) ? 0 : -1;
+        const int bias2 = (A2 > 0 || (A2 == 0 && B2 > 0)) ? 0 : -1;
+
         float dzdx = (A0 * z0 + A1 * z1 + A2 * z2) * invArea;
         float dzdy = (B0 * z0 + B1 * z1 + B2 * z2) * invArea;
 
@@ -599,7 +637,7 @@ namespace AC_Engine
 
             for (int x = minX; x <= maxX; x++)
             {
-                if ((e0 | e1 | e2) < 0)
+                if (((e0 + bias0) | (e1 + bias1) | (e2 + bias2)) < 0)
                 {
                     if (inside) break;
                     e0 += A0; e1 += A1; e2 += A2;
@@ -639,8 +677,22 @@ namespace AC_Engine
 
                 auto to8 = [](float val) { return (uint32_t)(std::clamp(val, 0.f, 1.f) * 255.f + 0.5f); };
 
+                
+
+                uint32_t out = (to8(b) << 16) | (to8(g) << 8) | to8(r);
+
                 m_frameBuffer.getZBuffer()[idx] = z;
-                m_frameBuffer.setPixel(x, y, 0xFF000000 | (to8(b) << 16) | (to8(g) << 8) | to8(r));
+                
+                if (mat.opacity < 1.0f)
+                {
+                    uint32_t src = ((uint32_t)(mat.opacity * 255.f + 0.5f) << 24) | out;
+                    uint32_t dst = m_frameBuffer.getTransparentPixels()[idx];
+                    m_frameBuffer.setTransparentPixel(x, y, blendOver(src, dst));
+                }
+                else
+                {
+                    m_frameBuffer.setPixel(x, y, 0xFF000000 | out);
+                }
 
                 e0 += A0; e1 += A1; e2 += A2;
                 z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;

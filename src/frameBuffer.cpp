@@ -6,6 +6,7 @@ namespace AC_Engine
     {
         m_pixels.resize(m_width * m_height, 0);
         m_UiPixels.resize((m_width) * m_height, 0);
+        m_transparentPixels.resize(m_width * m_height, 0);
         m_zBuffer.resize(m_width * m_height, 1e30f);
 
         for (std::size_t i = 0; i < m_pixels.size(); ++i) 
@@ -22,6 +23,14 @@ namespace AC_Engine
             return; // Out of bounds
         }
         m_pixels[y * m_width + x] = color;
+    }
+
+    void FrameBuffer::setTransparentPixel(int x, int y, unsigned int color)
+    {
+        if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
+            return; // Out of bounds
+        }
+        m_transparentPixels[y * m_width + x] = color;
     }
 
     void FrameBuffer::update(int width, int height, float clearColor[4])
@@ -42,6 +51,7 @@ namespace AC_Engine
         m_width = width;
         m_height = height;
         m_pixels.resize(m_width * m_height);
+        m_transparentPixels.resize(m_width * m_height);
         m_UiPixels.resize((m_width) * m_height);
         m_zBuffer.resize(m_width * m_height);
     }
@@ -50,6 +60,7 @@ namespace AC_Engine
     {
         std::fill(m_pixels.begin(), m_pixels.end(), m_clearColor ? m_clearColor : 0x00000000);
         std::fill(m_UiPixels.begin(), m_UiPixels.end(), 0x99000000);
+        std::fill(m_transparentPixels.begin(), m_transparentPixels.end(), 0x00000000);
     }
     void FrameBuffer::clearZBuffer()
     {

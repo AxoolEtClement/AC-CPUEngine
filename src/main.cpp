@@ -18,6 +18,7 @@ using namespace std::string_literals;
 int main() {
     MaterialLibrary materialLibrary;
     Material mat;
+    Material transparentMat;
 	Material particleMat;
     Material terrainMat;
     AC_Engine::Window window(640, 480, "AC-CPUEngine");
@@ -39,6 +40,7 @@ int main() {
     terrain.generateTerrain(0.04f, 0.5f, 4, 15.f);
     terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
     renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
+    renderObject transparentObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
     renderObject terrainObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/terrain.obj"s);
     std::cout << "Terrain vertices: " << terrainObj.vertices.size() << std::endl;
     terrainObj.initNormals();
@@ -60,6 +62,11 @@ int main() {
     mat.shininess  = 32.f;
     mat.buildSpecLut();
 
+    transparentMat.diffuseMap = std::make_shared<Texture>(texture);
+    transparentMat.shininess  = 32.f;
+    transparentMat.opacity = 0.5f; // Set opacity to 50% for transparency
+    transparentMat.buildSpecLut();
+
 	particleMat.diffuseMap = std::make_shared<Texture>(particleTexture);
 	particleMat.shininess = 32.f;
 	particleMat.emissive = { 0.5f, 0.5f, 0.5f };
@@ -71,12 +78,17 @@ int main() {
     terrainMat.buildSpecLut();
 
     obj.materialId = materialLibrary.add(mat);
+    transparentObj.materialId = materialLibrary.add(transparentMat);
     terrainObj.materialId = materialLibrary.add(terrainMat);
-    std::vector<renderObject> renderObjects = {obj, terrainObj};
+    transparentObj.modelMatrix *= simd::Matrix4x4::Translation({0.f, 0.f, 2.f});
+    std::vector<renderObject> renderObjects = { obj, transparentObj, transparentObj, terrainObj};
+    renderObjects[2].modelMatrix *= simd::Matrix4x4::Translation({ 0.f, 0.f, -5.f });
 
 	AC_Engine::ParticlePool particlePool(1000);
 	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
 	particleEmitter.setVelocity({ 0.f, 1.f, 0.f });
+
+    
 
     // Main loop
     while (!window.shouldClose()) 
