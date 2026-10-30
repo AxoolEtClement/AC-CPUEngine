@@ -3,7 +3,7 @@
 #include "editorCamera.hpp"
 #include "fixedCamera.hpp"
 #include <vector>
-#include <variant>
+#include <GLFW/glfw3.h>
 
 namespace AC_Engine
 {
@@ -16,15 +16,20 @@ namespace AC_Engine
         CameraManager() = default;
         ~CameraManager() = default;
 
-        void createCamera(std::variant<EditorCamera, FixedCamera> camera)
+        template <typename T>
+        void createCamera(T&& camera) 
         {
-            m_cameras.push_back(std::visit([](auto&& cam) -> Camera { return cam; }, camera));
+            m_cameras.push_back(std::make_unique<std::decay_t<T>>(std::forward<T>(camera)));
         }
-        Camera& getActiveCamera() { return m_cameras[m_activeCameraId]; }
+        void updateActiveCamera(GLFWwindow& window)
+        {
+            m_cameras[m_activeCameraId]->update(window ,0.016f); // Assuming a fixed delta time of 16ms for simplicity
+        }
+        Camera& getActiveCamera() { return *m_cameras[m_activeCameraId]; }
         void setActiveCamera(const int& cameraid) { m_activeCameraId = cameraid; }
 
     private:
-        std::vector<Camera> m_cameras{};
+        std::vector<std::unique_ptr<Camera>> m_cameras;
         int m_activeCameraId{};
     };
 }

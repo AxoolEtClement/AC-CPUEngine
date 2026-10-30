@@ -44,7 +44,14 @@ struct renderObject
         
         for (auto& vertex : vertices)
         {
-            vertex.normal = vertex.normal.Normalize();
+            if(vertex.normal == simd::Vec3f{ 0.f, 0.f, 0.f })
+            {
+                vertex.normal = simd::Vec3f{ 0.f, 1.f, 0.f }; // Default normal if no faces contribute
+            }
+            else
+            {
+                vertex.normal = vertex.normal.Normalize();
+            }
         }
 	}
 };

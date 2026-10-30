@@ -2,6 +2,8 @@
 #include "Mat4x4.hpp"
 #include "Vec4.hpp"
 #include <math.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
 
 class Camera
 {
@@ -18,13 +20,15 @@ public:
 		this->far = far;
 		this->aspect = static_cast<float>(width) / static_cast<float>(height);
 	};
+	virtual void update(GLFWwindow& window,float deltaTime) = 0;
 	simd::Vec3f getForward() const { return forward; }
 	simd::Vec3f getUp() const { return up; }
 
 private:
 	
 	simd::Vec3f forward{ -0.57735f, -0.57735f, -0.57735f };
-	const simd::Vec3f up{ 0.f, 1.f, 0.f };
+	// TODO : Fix up vector
+	const simd::Vec3f up{ 0.f, -1.f, 0.f };
 	float fov{ 90.f };
 	float aspect{ 1.f };
 	float near{ 0.1f };

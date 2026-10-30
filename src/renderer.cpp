@@ -31,7 +31,7 @@ namespace AC_Engine
         glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getPixels() );
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
+        //glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
         glDisable(GL_BLEND);
     }
 
@@ -104,7 +104,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjectsWireframe(std::vector <renderObject> renderObjects, Camera cam)
+    void Renderer::renderObjectsWireframe(std::vector <renderObject> renderObjects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -184,10 +184,26 @@ namespace AC_Engine
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
 
-            for (const auto& vertex : obj.vertices) {
+            for (const auto& vertex : obj.vertices) 
+            {
                 simd::Vec4 clip{ MVP * vertex.pos };
                 clipCoord.push_back(clip);
-                worldNormals.push_back(obj.modelMatrix.TransformDirection(vertex.normal).Normalize());
+
+                // CORRECTION : Sécuriser la normalisation
+                simd::Vec3f transformedNormal = obj.modelMatrix.TransformDirection(vertex.normal);
+
+                // On vérifie si la normale transformée n'est pas nulle avant d'appeler Normalize()
+                // Si votre structure de vecteur possède une méthode de longueur ou si vous pouvez tester ses composants :
+                float lengthSq = transformedNormal.getX() * transformedNormal.getX() + 
+                                 transformedNormal.getY() * transformedNormal.getY() + 
+                                 transformedNormal.getZ() * transformedNormal.getZ();
+
+                if (lengthSq > 0.0001f) {
+                    worldNormals.push_back(transformedNormal.Normalize());
+                } else {
+                    // Si le mesh n'a pas de normales (comme le terrain actuel), on met une normale par défaut vers le haut
+                    worldNormals.push_back(simd::Vec3f{ 0.0f, 1.0f, 0.0f }); 
+                }
             }
 
             for (size_t f = 0; f < obj.faces.size(); f++) {
@@ -196,12 +212,13 @@ namespace AC_Engine
                 v1.pos = clipCoord[obj.faces[f][1]];
                 v2.pos = clipCoord[obj.faces[f][2]];
 
-                int ta = obj.face_uvs[f * 3 + 0];
-                int tb = obj.face_uvs[f * 3 + 1];
-                int tc = obj.face_uvs[f * 3 + 2];
-                v0.texCoord = obj.uvs[ta];
-                v1.texCoord = obj.uvs[tb];
-                v2.texCoord = obj.uvs[tc];
+                if (obj.face_uvs.size() >= (f + 1) * 3) {
+                    v0.texCoord = obj.uvs[obj.face_uvs[f * 3 + 0]];
+                    v1.texCoord = obj.uvs[obj.face_uvs[f * 3 + 1]];
+                    v2.texCoord = obj.uvs[obj.face_uvs[f * 3 + 2]];
+                } else {
+                    v0.texCoord = v1.texCoord = v2.texCoord = { 0.f, 0.f };
+                }   
 
                 v0.normal = worldNormals[obj.faces[f][0]];
                 v1.normal = worldNormals[obj.faces[f][1]];
