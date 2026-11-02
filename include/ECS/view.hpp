@@ -14,17 +14,16 @@ namespace AC_Engine::ECS
 		class Iterator
 		{
 		public:
-			Iterator(std::tuple<SparseSet<Components>*...>& sets, unsigned int index);
+			Iterator(std::tuple<SparseSet<Components>*...>& sets, ISparseSet* smallestSet, unsigned int index);
 			Iterator& operator++();
 			bool operator==(const Iterator& other) const;
 			std::tuple<Components&...> operator*() const;
 		private:
 			bool entityHasRequiredComponents() const;
-			unsigned int getMinSize() const;
 
 			std::tuple<SparseSet<Components>*...> m_sets;
+			ISparseSet* m_smallestSet = nullptr;
 			unsigned int m_index = 0;
-
 		};
 
 		Iterator begin();
@@ -32,7 +31,7 @@ namespace AC_Engine::ECS
 
 	private:
 		std::tuple<SparseSet<Components>*...> m_sets;
-		size_t m_indexOfSmallestSet = 0;
+		ISparseSet* m_smallestSet = nullptr;
 	};
 
 
@@ -42,19 +41,22 @@ namespace AC_Engine::ECS
 	inline View<Components...>::View(SparseSet<Components>*... sets)
 		: m_sets(sets...)
 	{
-		size_t minSize = std::min({ std::get<SparseSet<Components>*>(m_sets)->size()... });
-		for (size_t i = 0; i < std::tuple_size<typeof(m_sets)>; ++i)
+		ISparseSet* setsArray[] = { static_cast<ISparseSet*>(sets)... };
+		m_smallestSet = setArray[0];
+		for (ISparseSet* set : setsArray)
 		{
-			if (std::get<i>(m_sets)->size() == minSize)
-				m_indexOfSmallestSet = i;
-		} // TODO : cleanup this thing
+			if (set->size() < m_smallestSet->size())
+			{
+				m_smallestSet = set;
+			}
+		}
 	}
 
 	template<typename ...Components>
-	inline View<Components...>::Iterator::Iterator(std::tuple<SparseSet<Components>*...>& sets, unsigned int index)
-		: m_sets(sets), m_index(index)
+	inline View<Components...>::Iterator::Iterator(std::tuple<SparseSet<Components>*...>& sets, ISparseSet* smallestSet, unsigned int index)
+		: m_sets(sets), m_index(index), m_smallestSet(smallestSet)
 	{
-		if (m_index < getMinSize() && !entityHasRequiredComponents())
+		if (m_index < m_smallestSet->size() && !entityHasRequiredComponents())
 		{
 			++(*this);
 		}
@@ -66,18 +68,18 @@ namespace AC_Engine::ECS
 		do
 		{
 			m_index++;
-		} while (m_index < getMinSize() && !entityHasRequiredComponents());
+		} while (m_index < m_smallestSet->size() && !entityHasRequiredComponents());
 		return *this;
 	}
 	template<typename ...Components>
 	inline bool View<Components...>::Iterator::operator==(const Iterator& other) const
 	{
-		return m_sets == other.m_sets && m_index == other.m_index;
+		return m_index == other.m_index;
 	}
 	template<typename ...Components>
 	inline std::tuple<Components&...> View<Components...>::Iterator::operator*() const
 	{
-		unsigned int entityID = std::get<m_indexOfSmallestSet>(m_sets)->getEntityAt(m_index);
+		unsigned int entityID = m_smallestSet->getEntityAt(m_index);
 
 		return std::apply([entityID](SparseSet<Components>*... sets) {
 			return std::forward_as_tuple(sets->getComponent(entityID)...);
@@ -87,7 +89,7 @@ namespace AC_Engine::ECS
 	template<typename ...Components>
 	inline bool View<Components...>::Iterator::entityHasRequiredComponents() const
 	{
-		unsigned int entityID = std::get<m_indexOfSmallestSet>(m_sets)->getEntityAt(m_index);
+		unsigned int entityID = m_smallestSet->getEntityAt(m_index);
 		return std::apply([entityID](SparseSet<Components>*... sets) {
 			return (... && sets->hasComponent(entityID));
 			}, m_sets
@@ -95,23 +97,14 @@ namespace AC_Engine::ECS
 	}
 
 	template<typename ...Components>
-	inline unsigned int View<Components...>::Iterator::getMinSize() const
-	{
-		return std::min({ std::get<SparseSet<Components>*>(m_sets)->size()... });
-	}
-
-	template<typename ...Components>
 	inline typename View<Components...>::Iterator View<Components...>::begin()
 	{
-		return Iterator(m_sets, 0);
+		return Iterator(m_sets, m_smallestSet, 0);
 	}
 
 	template<typename ...Components>
 	inline typename View<Components...>::Iterator View<Components...>::end()
 	{
-		return Iterator(
-			m_sets, 
-			std::min({ std::get<SparseSet<Components>*>(m_sets)->size()... })
-		);
+		return Iterator(m_sets, m_smallestSet, m_smallestSet->size());
 	}
 }
