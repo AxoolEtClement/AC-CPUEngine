@@ -10,10 +10,11 @@ namespace AC_Engine::ECS
 {
 	class Registry
 	{
+	public:
 		~Registry();
 		
 		template <typename Component, typename ...Args>
-		Component& addComponent(unsigned int entityID, Component component, Args&... args);
+		Component& addComponent(unsigned int entityID, Args&... args);
 
 		template <typename Component>
 		void removeComponent(unsigned int entityID);
@@ -24,26 +25,28 @@ namespace AC_Engine::ECS
 		template <typename Component>
 		bool hasComponent(unsigned int entityID);
 
-		void removeEntity(unsigned int entityID);
+		Entity createEntity();
+		void removeEntity(Entity entity);
 
 		template <typename... Components>
 		View<Components...> view();
 
 	private:
 		std::unordered_map<std::type_index, ISparseSet*> m_storage{};
+		EntityManager m_entityManager{};
 	};
 
 
 	// Definitions
 
-	AC_Engine::ECS::Registry::~Registry()
+	Registry::~Registry()
 	{
 		for (auto& setPair : m_storage)
 			delete setPair.second;
 	}
 
 	template<typename Component, typename ...Args>
-	inline Component& Registry::addComponent(unsigned int entityID, Component component, Args& ...args)
+	inline Component& Registry::addComponent(unsigned int entityID, Args& ...args)
 	{
 		if (!m_storage.contains(std::type_index(typeid(Component))))
 		{
@@ -56,7 +59,10 @@ namespace AC_Engine::ECS
 	template <typename Component>
 	void Registry::removeComponent(unsigned int entityID)
 	{
-		m_storage[std::type_index(typeid(Component))]->removeComponent(entityID);
+		auto typeIndex = std::type_index(typeid(Component));
+		if (!m_storage.contains(typeIndex))
+			return;
+		m_storage[typeIndex]->removeComponent(entityID);
 	}
 	
 	template <typename Component>
@@ -69,15 +75,27 @@ namespace AC_Engine::ECS
 	template <typename Component>
 	inline bool Registry::hasComponent(unsigned int entityID)
 	{
-		return m_storage[std::type_index(typeid(Component))]->hasComponent(entityID);
+		auto typeIndex = std::type_index(typeid(Component));
+		if (!m_storage.contains(typeIndex))
+			return false;
+		
+		return m_storage[typeIndex]->hasComponent(entityID);
 	}
 
-	inline void Registry::removeEntity(unsigned int entityID)
+	inline Entity Registry::createEntity()
 	{
+		return m_entityManager.createEntity();
+	}
+
+	inline void Registry::removeEntity(Entity entity)
+	{
+		unsigned int entityID = entity.id;
 		for (auto& setPair : m_storage)
 		{
-			setPair.second->removeComponent(entityID);
+			if (setPair.second->hasComponent(entityID))
+				setPair.second->removeComponent(entityID);
 		}
+		m_entityManager.destroyEntity(entity);
 	}
 
 	template<typename ...Components>
