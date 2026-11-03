@@ -2,7 +2,10 @@
 #include <memory>
 #include "renderData.hpp"
 
-struct MeshComponent
+namespace AC_Engine
 {
-	std::shared_ptr<Mesh> mesh{};
-};
+	struct MeshComponent
+	{
+		std::shared_ptr<Mesh> mesh{};
+	};
+}

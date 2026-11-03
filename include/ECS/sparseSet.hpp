@@ -81,7 +81,7 @@ namespace AC_Engine::ECS
 		{
 			return m_components[m_sparse[entityID]];
 		}
-		return nullptr;
+		//return nullptr;
 	}
 
 	
