@@ -104,7 +104,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjectsWireframe(std::vector <renderObject> renderObjects, Camera cam)
+    void Renderer::renderObjectsWireframe(std::vector <Mesh> renderObjects, Camera cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -165,7 +165,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjects(std::vector<renderObject>& objects, Camera& cam)
+    void Renderer::renderObjects(std::vector<Mesh>& objects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();

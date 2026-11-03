@@ -33,7 +33,7 @@ int main() {
 
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
-    renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
+    Mesh obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
 	obj.initNormals();
 
     std::cout << "Vertices: " << obj.vertices.size() << std::endl;
@@ -54,7 +54,7 @@ int main() {
 	particleMat.buildSpecLut();
 
     obj.materialId = materialLibrary.add(mat);
-    std::vector<renderObject> renderObjects = {obj};
+    std::vector<Mesh> renderObjects = {obj};
 
 	AC_Engine::ParticlePool particlePool(1000);
 	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
