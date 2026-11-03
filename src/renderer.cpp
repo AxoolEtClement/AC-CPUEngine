@@ -176,13 +176,14 @@ namespace AC_Engine
         //V.Normalize();
         // TODO : calculate V for each vertex
         CameraComponent cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
-        simd::Matrix4x4 VP{ perspective(cam) * view(cam) };
-
+        cam.aspect = static_cast<float>(width) / static_cast<float>(height);
+        simd::Matrix4x4 VP{ cam.projection() * cam.view() };
+        
         for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
         {
             auto& obj = *mesh.mesh;
             const Material& mat = m_materialLibrary.get(obj.materialId);
-            simd::Matrix4x4 MVP{ VP * transform.transform };
+            simd::Matrix4x4 MVP{ VP * transform.getTransformMatrix() };
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
@@ -929,33 +930,5 @@ namespace AC_Engine
         int sy = static_cast<int>((1.0f - (v.pos.getY() * inv + 1.0f) * 0.5f) * height);
         float sz = v.pos.getZ() * inv;
         return { sx, sy, sz, inv, v.texCoord, v.normal };
-    }
-
-    simd::Matrix4x4 Renderer::perspective(CameraComponent cam)
-    {
-        float yScale = 1 / std::tan(cam.fov / 2);
-        float xScale = yScale / cam.aspect;
-
-        float A = (cam.far + cam.near) / (cam.near - cam.far);
-        float B = (2 * cam.far * cam.near) / (cam.near - cam.far);
-
-        return simd::Matrix4x4{ {
-            xScale, 0.f, 0.f, 0.f,
-            0.f, yScale, 0.f, 0.f,
-            0.f, 0.f, A, B,
-            0.f, 0.f, -1.f, 0.f
-        } };
-    }
-    simd::Matrix4x4 Renderer::view(CameraComponent cam)
-    {
-        simd::Vec3f right{ cam.up.Cross(cam.forward).Normalize() };
-        simd::Vec3f camUp{ cam.forward.Cross(right).Normalize() };
-
-        return simd::Matrix4x4{ {
-            right.getX(), right.getY(), right.getZ(), -right.Dot(cam.pos),
-            camUp.getX(), camUp.getY(), camUp.getZ(), -camUp.Dot(cam.pos),
-            -cam.forward.getX(), -cam.forward.getY(), -cam.forward.getZ(), cam.forward.Dot(cam.pos),
-            0.f, 0.f, 0.f, 1.f
-        } };
     }
 }

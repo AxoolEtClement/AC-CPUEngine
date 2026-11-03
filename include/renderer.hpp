@@ -98,8 +98,5 @@ namespace AC_Engine
 		void threadLoop(int threadId);
         void renderTile(int threadId);
         ScreenVertex projectVertex(const Vertex& vertex, int width, int height);
-
-        simd::Matrix4x4 perspective(CameraComponent cam);
-        simd::Matrix4x4 view(CameraComponent cam);
     };
 }
