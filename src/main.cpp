@@ -65,6 +65,7 @@ int main() {
         renderObjects[0].modelMatrix *= rotation;
         window.pollEvents();
         customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
+        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(), 10.0f, 10.0f, 0.1f);
         gui.newFrame();
         cam.getActiveCamera().updateInfos(window.getWidth(), window.getHeight(), 90.f, 0.1f, 100.f);
         frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
