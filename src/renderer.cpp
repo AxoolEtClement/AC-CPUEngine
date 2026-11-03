@@ -31,7 +31,7 @@ namespace AC_Engine
         glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getPixels() );
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        //glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
+        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
         glDisable(GL_BLEND);
     }
 
