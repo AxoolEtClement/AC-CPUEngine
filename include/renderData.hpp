@@ -12,7 +12,7 @@ struct Vertex
 	simd::Vec3f normal;
 };
 
-struct renderObject
+struct Mesh
 {
     simd::Matrix4x4 modelMatrix{};
     std::vector<Vertex> vertices{};

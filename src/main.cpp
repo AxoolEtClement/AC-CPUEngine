@@ -39,8 +39,8 @@ int main() {
     AC_Engine::ProceduralTerrain terrain(100, 100);
     terrain.generateTerrain(0.04f, 0.5f, 4, 15.f);
     terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
-    renderObject obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
-    renderObject terrainObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/terrain.obj"s);
+    Mesh obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
+    Mesh terrainObj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/terrain.obj"s);
     std::cout << "Terrain vertices: " << terrainObj.vertices.size() << std::endl;
     terrainObj.initNormals();
 	obj.initNormals();
@@ -73,7 +73,7 @@ int main() {
 
     obj.materialId = materialLibrary.add(mat);
     terrainObj.materialId = materialLibrary.add(terrainMat);
-    std::vector<renderObject> renderObjects = {obj, terrainObj};
+    std::vector<Mesh> renderObjects = {obj, terrainObj};
 
 	AC_Engine::ParticlePool particlePool(1000);
 	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);

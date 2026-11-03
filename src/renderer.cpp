@@ -104,7 +104,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjectsWireframe(std::vector <renderObject> renderObjects, Camera& cam)
+    void Renderer::renderObjectsWireframe(std::vector <Mesh> renderObjects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -165,7 +165,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjects(std::vector<renderObject>& objects, Camera& cam)
+    void Renderer::renderObjects(std::vector<Mesh>& objects, Camera& cam)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -189,11 +189,11 @@ namespace AC_Engine
                 simd::Vec4 clip{ MVP * vertex.pos };
                 clipCoord.push_back(clip);
 
-                // CORRECTION : Sécuriser la normalisation
+                // CORRECTION : S�curiser la normalisation
                 simd::Vec3f transformedNormal = obj.modelMatrix.TransformDirection(vertex.normal);
 
-                // On vérifie si la normale transformée n'est pas nulle avant d'appeler Normalize()
-                // Si votre structure de vecteur possède une méthode de longueur ou si vous pouvez tester ses composants :
+                // On v�rifie si la normale transform�e n'est pas nulle avant d'appeler Normalize()
+                // Si votre structure de vecteur poss�de une m�thode de longueur ou si vous pouvez tester ses composants :
                 float lengthSq = transformedNormal.getX() * transformedNormal.getX() + 
                                  transformedNormal.getY() * transformedNormal.getY() + 
                                  transformedNormal.getZ() * transformedNormal.getZ();
@@ -201,7 +201,7 @@ namespace AC_Engine
                 if (lengthSq > 0.0001f) {
                     worldNormals.push_back(transformedNormal.Normalize());
                 } else {
-                    // Si le mesh n'a pas de normales (comme le terrain actuel), on met une normale par défaut vers le haut
+                    // Si le mesh n'a pas de normales (comme le terrain actuel), on met une normale par d�faut vers le haut
                     worldNormals.push_back(simd::Vec3f{ 0.0f, 1.0f, 0.0f }); 
                 }
             }
