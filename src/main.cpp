@@ -5,7 +5,7 @@
 #include "gui.hpp"
 #include "Vec4.hpp"
 #include "cameraManager.hpp"
-#include "objparser.hpp"
+#include "meshManager.hpp"
 #include "texture.hpp"
 #include "font.hpp"
 #include "material.hpp"
@@ -23,6 +23,7 @@ int main() {
     AC_Engine::FrameBuffer frameBuffer(640, 480);
     AC_Engine::Renderer renderer(frameBuffer,materialLibrary);
     AC_Engine::gui gui;
+    AC_Engine::MeshManager meshManager;
     gui.init(window.getWindow());
 
     AC_Engine::CustomUI customUI;
@@ -33,16 +34,11 @@ int main() {
 
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
-    Mesh obj = AC_Engine::ObjParser::parseObjFile(PROJECT_DIR + "/assets/spot.obj"s);
-	obj.initNormals();
-
-    std::cout << "Vertices: " << obj.vertices.size() << std::endl;
-    std::cout << "Faces: " << obj.faces.size() << std::endl;
+    meshManager.addMesh("spot", PROJECT_DIR + "/assets/spot.obj"s);
+    meshManager.getMesh("spot")->initNormals();
 
     Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
-    std::cout << "Texture loaded: " << texture.width << "x" << texture.height << std::endl;
     Texture particleTexture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s);
-    std::cout << "Texture loaded: " << particleTexture.width << "x" << particleTexture.height << std::endl;
 
     mat.diffuseMap = std::make_shared<Texture>(texture);
     mat.shininess  = 32.f;
@@ -53,12 +49,13 @@ int main() {
 	particleMat.emissive = { 0.5f, 0.5f, 0.5f };
 	particleMat.buildSpecLut();
 
-    obj.materialId = materialLibrary.add(mat);
-    std::vector<Mesh> renderObjects = {obj};
+    meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
 
 	AC_Engine::ParticlePool particlePool(1000);
 	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
 	particleEmitter.setVelocity({ 0.f, 1.f, 0.f });
+
+    std::vector<Mesh> renderObjects = {*meshManager.getMesh("spot")};
 
     // Main loop
     while (!window.shouldClose()) 
