@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include "../../renderData.hpp"
+#include "renderData.hpp"
 
 struct MeshComponent
 {
