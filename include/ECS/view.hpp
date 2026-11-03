@@ -71,11 +71,13 @@ namespace AC_Engine::ECS
 		} while (m_index < m_smallestSet->size() && !entityHasRequiredComponents());
 		return *this;
 	}
+
 	template<typename ...Components>
 	inline bool View<Components...>::Iterator::operator==(const Iterator& other) const
 	{
 		return m_index == other.m_index;
 	}
+
 	template<typename ...Components>
 	inline std::tuple<Components&...> View<Components...>::Iterator::operator*() const
 	{
@@ -86,6 +88,7 @@ namespace AC_Engine::ECS
 			}, m_sets
 		);
 	}
+
 	template<typename ...Components>
 	inline bool View<Components...>::Iterator::entityHasRequiredComponents() const
 	{

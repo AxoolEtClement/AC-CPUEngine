@@ -4,7 +4,7 @@ namespace AC_Engine::ECS
 {
 	bool Entity::operator==(const Entity& other) const
 	{
-		return false;
+		return id == other.id && gen == other.gen;
 	}
 
 	Entity EntityManager::createEntity()

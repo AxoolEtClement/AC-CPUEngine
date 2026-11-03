@@ -3,9 +3,9 @@
 
 namespace AC_Engine
 {
-    Renderer::Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary)
+    Renderer::Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary, MeshManager& meshManager)
         : m_frameBuffer(frameBuffer), m_materialLibrary(materialLibrary), 
-        m_numThreads(std::max(2u, std::thread::hardware_concurrency()))
+        m_numThreads(std::max(2u, std::thread::hardware_concurrency())), m_meshManager(meshManager)
     {
         for (int i = 0; i < m_numThreads; ++i) 
         {
@@ -165,7 +165,7 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjects(std::vector<Mesh>& objects, Camera& cam)
+    void Renderer::renderObjects(ECS::Registry& registry, unsigned int cameraEntityID)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -174,12 +174,15 @@ namespace AC_Engine
         Light light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, {1.f, 1.f, 1.f}, ambiantLightIntensity };
         //simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
         //V.Normalize();
+        // TODO : calculate V for each vertex
+        CameraComponent cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
+        simd::Matrix4x4 VP{ perspective(cam) * view(cam) };
 
-        simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
-
-        for (const auto& obj : objects) {
+        for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
+        {
+            auto& obj = *mesh.mesh;
             const Material& mat = m_materialLibrary.get(obj.materialId);
-            simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
+            simd::Matrix4x4 MVP{ VP * transform.transform };
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
@@ -943,5 +946,33 @@ namespace AC_Engine
         int sy = static_cast<int>((1.0f - (v.pos.getY() * inv + 1.0f) * 0.5f) * height);
         float sz = v.pos.getZ() * inv;
         return { sx, sy, sz, inv, v.texCoord, v.normal };
+    }
+
+    simd::Matrix4x4 Renderer::perspective(CameraComponent cam)
+    {
+        float yScale = 1 / std::tan(cam.fov / 2);
+        float xScale = yScale / cam.aspect;
+
+        float A = (cam.far + cam.near) / (cam.near - cam.far);
+        float B = (2 * cam.far * cam.near) / (cam.near - cam.far);
+
+        return simd::Matrix4x4{ {
+            xScale, 0.f, 0.f, 0.f,
+            0.f, yScale, 0.f, 0.f,
+            0.f, 0.f, A, B,
+            0.f, 0.f, -1.f, 0.f
+        } };
+    }
+    simd::Matrix4x4 Renderer::view(CameraComponent cam)
+    {
+        simd::Vec3f right{ cam.up.Cross(cam.forward).Normalize() };
+        simd::Vec3f camUp{ cam.forward.Cross(right).Normalize() };
+
+        return simd::Matrix4x4{ {
+            right.getX(), right.getY(), right.getZ(), -right.Dot(cam.pos),
+            camUp.getX(), camUp.getY(), camUp.getZ(), -camUp.Dot(cam.pos),
+            -cam.forward.getX(), -cam.forward.getY(), -cam.forward.getZ(), cam.forward.Dot(cam.pos),
+            0.f, 0.f, 0.f, 1.f
+        } };
     }
 }

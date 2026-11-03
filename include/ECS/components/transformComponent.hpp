@@ -1,11 +1,16 @@
 #pragma once
-#include "Vec3f.hpp"
+#include "Mat4x4.hpp"
 
-namespace AC_Engine::ECS
+namespace AC_Engine
 {
-	struct Transform
+	struct TransformComponent
 	{
-		simd::Vec3f pos{ 0.f, 0.f, 0.f };
-		simd::Vec3f scale{ 1.f, 1.f, 1.f };
+		TransformComponent() = default;
+		TransformComponent(simd::Vec3f pos, simd::Vec3f scale)
+		{
+			transform *= simd::Matrix4x4::Scale(scale) * simd::Matrix4x4::Translation(pos);
+		}
+
+		simd::Matrix4x4 transform{};
 	};
 }

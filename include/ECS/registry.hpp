@@ -14,7 +14,7 @@ namespace AC_Engine::ECS
 		~Registry();
 		
 		template <typename Component, typename ...Args>
-		Component& addComponent(unsigned int entityID, Args&... args);
+		Component& addComponent(unsigned int entityID, Args&&... args);
 
 		template <typename Component>
 		void removeComponent(unsigned int entityID);
@@ -39,14 +39,14 @@ namespace AC_Engine::ECS
 
 	// Definitions
 
-	Registry::~Registry()
+	inline Registry::~Registry()
 	{
 		for (auto& setPair : m_storage)
 			delete setPair.second;
 	}
 
 	template<typename Component, typename ...Args>
-	inline Component& Registry::addComponent(unsigned int entityID, Args& ...args)
+	inline Component& Registry::addComponent(unsigned int entityID, Args&& ...args)
 	{
 		if (!m_storage.contains(std::type_index(typeid(Component))))
 		{
