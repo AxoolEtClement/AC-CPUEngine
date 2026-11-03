@@ -11,7 +11,12 @@
 #include "material.hpp"
 #include "Particle.hpp"
 #include <iostream>
+
 #include "ECS/registry.hpp"
+#include "ECS/components/cameraComponent.hpp"
+#include "ECS/components/meshComponent.hpp"
+#include "ECS/components/transformComponent.hpp"
+#include "ECS/components/particleEmitterComponent.hpp"
 
 using namespace std::string_literals;
 
@@ -21,6 +26,7 @@ int main() {
     Material particleMat{};
     AC_Engine::ECS::Registry registry{};
     AC_Engine::MeshManager meshManager{};
+    AC_Engine::ParticlePool particlePool{ 1000 };
     AC_Engine::Window window{ 640, 480, "AC-CPUEngine" };
     AC_Engine::FrameBuffer frameBuffer{ 640, 480 };
     AC_Engine::Renderer renderer{ frameBuffer,materialLibrary, meshManager };
@@ -41,8 +47,8 @@ int main() {
         simd::Vec3f{ -0.57735f, -0.57735f, -0.57735f }
     );
     AC_Engine::ECS::Entity spot{ registry.createEntity() };
+	AC_Engine::ECS::Entity particleEmitterEntity{ registry.createEntity() };
     
-
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
     meshManager.addMesh("spot", PROJECT_DIR + "/assets/spot.obj"s);
@@ -51,8 +57,8 @@ int main() {
     registry.addComponent<AC_Engine::MeshComponent>(spot.id, meshManager.getMesh("spot"));
     registry.addComponent<AC_Engine::TransformComponent>(spot.id);
 
-    Texture texture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s);
-    Texture particleTexture = TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s);
+    Texture texture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s) };
+    Texture particleTexture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s) };
 
     mat.diffuseMap = std::make_shared<Texture>(texture);
     mat.shininess  = 32.f;
@@ -65,9 +71,14 @@ int main() {
 
     meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
 
-	AC_Engine::ParticlePool particlePool(1000);
-	AC_Engine::ParticleEmitter particleEmitter(&particlePool, { 0.f, 0.f, 0.f }, 1.f, 2.f, 0.1f, &particleMat);
-	particleEmitter.setVelocity({ 0.f, 1.f, 0.f });
+    registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id, 
+        simd::Vec3f{ 0.f, 1.f, 0.f }, // velocity
+        1.f, // min lifetime
+        2.f, // max lifetime
+        0.1f, // spawn rate
+        &particleMat // material
+	);
+	registry.addComponent<AC_Engine::TransformComponent>(particleEmitterEntity.id);
 
     std::vector<Mesh> renderObjects = {*meshManager.getMesh("spot")};
 
@@ -81,10 +92,10 @@ int main() {
 
         frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
 
-		particleEmitter.update(0.016f); // TODO : change to real delta time
+		particlePool.updateEmitters(registry, 0.016f); // TODO : change to real delta time
 		particlePool.updateParticles(0.016f); // TODO : change to real delta time
 
-		//renderer.appendParticlesToRender(particlePool, cam.getActiveCamera());
+		renderer.appendParticlesToRender(particlePool, registry, camEntity.id);
         renderer.renderObjects(registry, camEntity.id);
         renderer.renderFrame();
         //gui.render(frameBuffer);

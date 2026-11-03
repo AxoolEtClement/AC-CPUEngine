@@ -1,5 +1,4 @@
 #include "Particle.hpp"
-#include "Particle.hpp"
 
 namespace AC_Engine
 {
@@ -46,33 +45,30 @@ namespace AC_Engine
 		}
 	}
 
+	void ParticlePool::updateEmitters(ECS::Registry& registry, float deltaTime)
+	{
+		for (auto&& [emitter, transform] : registry.view<ParticleEmitterComponent, TransformComponent>())
+		{
+			emitter.timeSinceLastSpawn += deltaTime;
+			float interval = 1.0f / emitter.spawnRate;
+			while (emitter.timeSinceLastSpawn >= interval) {
+				Particle* p = createParticle();
+				if (p) {
+					p->position = transform.position;
+					p->velocity = emitter.velocity;
+					p->color = 0xFFFFFFFF;
+					p->size = emitter.ParticleSize;
+					p->life = emitter.ParticleLife;
+					p->maxLife = emitter.ParticleLife;
+					p->mat = emitter.mat;
+				}
+				emitter.timeSinceLastSpawn -= interval;
+			}
+		}
+	}
+
 	const std::vector<Particle>& ParticlePool::getParticles() const
 	{
 		return m_particles;
-	}
-
-	ParticleEmitter::ParticleEmitter(ParticlePool* pool, const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat)
-		: m_pool(pool), m_position(position), m_spawnRate(spawnRate), m_ParticleLife(particleLife), m_ParticleSize(particleSize), m_mat(mat)
-	{
-	}
-
-	// ParticleEmitter methods
-	void ParticleEmitter::update(float deltaTime)
-	{
-		m_timeSinceLastSpawn += deltaTime;
-		float interval = 1.0f / m_spawnRate;
-		while (m_timeSinceLastSpawn >= interval) {
-			Particle* p = m_pool->createParticle();
-			if (p) {
-				p->position = m_position;
-				p->velocity = m_velocity;
-				p->color = 0xFFFFFFFF; // White color
-				p->size = m_ParticleSize;
-				p->life = m_ParticleLife;
-				p->maxLife = m_ParticleLife;
-				p->mat = m_mat;
-			}
-			m_timeSinceLastSpawn -= interval;
-		}
 	}
 }

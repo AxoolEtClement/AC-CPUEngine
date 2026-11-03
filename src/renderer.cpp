@@ -452,16 +452,16 @@ namespace AC_Engine
 
 				simd::Vec3f n = nw / iw;
 
-                if (std::isnan(u) || std::isnan(v) || std::isnan(n.getX()) || std::isnan(n.getY()) || std::isnan(n.getZ()) ||
-                    std::isinf(u) || std::isinf(v) || std::isinf(n.getX()) || std::isinf(n.getY()) || std::isinf(n.getZ()))
-                {
-                    // If we hit a NaN, color this specific pixel bright magenta/blue as a warning!
-                    m_frameBuffer.getZBuffer()[idx] = z;
-                    m_frameBuffer.setPixel(x, y, 0xFFFF00FF); // Magenta is great for spotting math bugs
-                    e0 += A0; e1 += A1; e2 += A2;
-                    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
-                    continue;
-                }
+                //if (std::isnan(u) || std::isnan(v) || std::isnan(n.getX()) || std::isnan(n.getY()) || std::isnan(n.getZ()) ||
+                //    std::isinf(u) || std::isinf(v) || std::isinf(n.getX()) || std::isinf(n.getY()) || std::isinf(n.getZ()))
+                //{
+                //    // If we hit a NaN, color this specific pixel bright magenta/blue as a warning!
+                //    m_frameBuffer.getZBuffer()[idx] = z;
+                //    m_frameBuffer.setPixel(x, y, 0xFFFF00FF); // Magenta is great for spotting math bugs
+                //    e0 += A0; e1 += A1; e2 += A2;
+                //    z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+                //    continue;
+                //}
 
                 n = n.Normalize();
                 float ndotl = std::max(0.f, n.Dot(light.dir));
@@ -748,51 +748,16 @@ namespace AC_Engine
             screen_x[2], screen_y[2], ndc_z[2], inv_w[2], triangle[2].texCoord, triangle[2].normal,
             mat, light, V
         );
-
-        //for (size_t f = 0; f < obj.first.faces.size(); f++) {
-        //    const auto& face = obj.first.faces[f];
-        //    int a = face[0];
-        //    int b = face[1];
-        //    int c = face[2];
-        //    //if (!visible[face[0]] || !visible[face[1]] || !visible[face[2]]) continue;
-        //    if (barycentricWeights(screen_x[a], screen_y[a], screen_x[b], screen_y[b], screen_x[c], screen_y[c]) <= 0) continue;
-
-        //    simd::Vec3f p0{ obj.first.vertices[a].pos.getX(), obj.first.vertices[a].pos.getY(), obj.first.vertices[a].pos.getZ() };
-        //    simd::Vec3f p1{ obj.first.vertices[b].pos.getX(), obj.first.vertices[b].pos.getY(), obj.first.vertices[b].pos.getZ() };
-        //    simd::Vec3f p2{ obj.first.vertices[c].pos.getX(), obj.first.vertices[c].pos.getY(), obj.first.vertices[c].pos.getZ() };
-
-        //    simd::Vec3f edge1 = p1 - p0;
-        //    simd::Vec3f edge2 = p2 - p0;
-        //    simd::Vec3f n = obj.first.modelMatrix.TransformDirection(edge1.Cross(edge2)).Normalize();
-        //    float ndotl = n.Dot(lightDir);
-        //    if (ndotl < 0.0f) ndotl = 0.0f;
-        //    float brightness = ambiantLightIntensity + (1.0f - ambiantLightIntensity) * ndotl;
-
-        //    int ta = obj.first.face_uvs[f * 3 + 0];
-        //    int tb = obj.first.face_uvs[f * 3 + 1];
-        //    int tc = obj.first.face_uvs[f * 3 + 2];
-        //    std::pair<float, float> uva = obj.first.uvs[ta];
-        //    std::pair<float, float> uvb = obj.first.uvs[tb];
-        //    std::pair<float, float> uvc = obj.first.uvs[tc];
-
-        //    drawTrianglePhong(
-        //        screen_x[a], screen_y[a], ndc_z[a], ndc_w[a], uva, worldNormals[a],
-        //        screen_x[b], screen_y[b], ndc_z[b], ndc_w[b], uvb, worldNormals[b],
-        //        screen_x[c], screen_y[c], ndc_z[c], ndc_w[c], uvc, worldNormals[c],
-        //        obj.second, lightDir, halfVector
-        //    );
-        //}
     }
 
-    void Renderer::appendParticlesToRender(const ParticlePool& particlePool, Camera& cam)
+    void Renderer::appendParticlesToRender(const ParticlePool& particlePool, ECS::Registry& registry, unsigned int cameraEntityID)
     {
-        simd::Vec3f camForward{ cam.getForward() };
-        simd::Vec3f worldUp{ 0.f, 1.f, 0.f };
+		const CameraComponent& cam = registry.getComponent<CameraComponent>(cameraEntityID);
 
-        simd::Vec3f camRight{ camForward.Cross(worldUp).Normalize() };
-		simd::Vec3f camUp{ camRight.Cross(camForward).Normalize() };
+        simd::Vec3f camRight{ cam.forward.Cross(cam.up).Normalize() };
+		simd::Vec3f camUp{ camRight.Cross(cam.forward).Normalize() };
         
-        simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
+        simd::Matrix4x4 VP{ cam.projection() * cam.view() };
 
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
@@ -835,7 +800,6 @@ namespace AC_Engine
             ScreenVertex sv2 = toScreenVertex(c2, { 1.f, 1.f });
             ScreenVertex sv3 = toScreenVertex(c3, { 0.f, 1.f });
 
-            // Push the two triangles making up the billboard quad into m_trianglesToRender
             if (barycentricWeights(sv0.x, sv0.y, sv1.x, sv1.y, sv2.x, sv2.y) > 0) {
                 m_trianglesToRender.push_back({ {sv0, sv1, sv2}, p.mat });
             }

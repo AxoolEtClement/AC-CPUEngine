@@ -56,7 +56,7 @@ namespace AC_Engine
         void renderObjectsWireframe(std::vector<Mesh> renderObjects, Camera cam);
         void renderObjects(ECS::Registry& registry, unsigned int cameraEntityID);
 
-        void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
+        void appendParticlesToRender(const ParticlePool& particlePool, ECS::Registry& registry, unsigned int cameraEntityID);
     private:
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;
