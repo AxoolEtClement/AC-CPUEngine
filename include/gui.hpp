@@ -9,6 +9,7 @@
 #include <vector>
 #include <numeric>
 #include "font.hpp"
+#include "texture.hpp"
 
 namespace AC_Engine
 {
@@ -85,6 +86,7 @@ namespace AC_Engine
                       const char* text, float x, float y,
                       uint32_t color = 0xFFFFFFFF) const;
         bool isFontLoaded() const { return m_fontLoaded; }
+        void drawImage(std::string imagePath, uint8_t* dst, int dstW, int dstH, float x, float y, float scale = 1.0f) const;
         
     private:
         Font m_font;

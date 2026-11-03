@@ -190,4 +190,38 @@ namespace AC_Engine
             x += g.xadvance;
         }
     }
+
+    void CustomUI::drawImage(std::string imagePath, uint8_t* dst, int dstW, int dstH, float x, float y, float scale) const
+    {
+        if (!dst) return;
+
+        Texture texture = TextureLoader::loadTexture(imagePath);
+        if (texture.pixels == nullptr) return;
+
+        int imgW = static_cast<int>(texture.width * scale);
+        int imgH = static_cast<int>(texture.height * scale);
+
+        for (int j = 0; j < imgH; ++j)
+        {
+            int dy = static_cast<int>(y + j);
+            if (dy < 0 || dy >= dstH) continue;
+
+            for (int i = 0; i < imgW; ++i)
+            {
+                int dx = static_cast<int>(x + i);
+                if (dx < 0 || dx >= dstW) continue;
+
+                // Calculate the corresponding pixel in the original texture
+                int texX = static_cast<int>(i / scale);
+                int texY = static_cast<int>(j / scale);
+
+                uint32_t c = TextureLoader::sampleTextureBilinear(texture, texX / static_cast<float>(texture.width), texY / static_cast<float>(texture.height));
+                uint8_t* d = &dst[(dy * dstW + dx) * 4];
+                d[0] = c & 0xFF;         // Blue
+                d[1] = (c >> 8) & 0xFF;  // Green
+                d[2] = (c >> 16) & 0xFF; // Red
+                d[3] = (c >> 24) & 0xFF; // Alpha
+            }
+        }
+    }
 }
