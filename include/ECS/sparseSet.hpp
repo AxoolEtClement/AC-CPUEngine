@@ -59,7 +59,7 @@ namespace AC_Engine::ECS
 	template<typename Component>
 	inline bool SparseSet<Component>::hasComponent(unsigned int entityID)
 	{
-		return m_indexes.contains(entityID);
+		return m_sparse.contains(entityID);
 	}
 
 	template<typename Component>
@@ -77,7 +77,7 @@ namespace AC_Engine::ECS
 	template<typename Component>
 	inline Component& SparseSet<Component>::getComponent(unsigned int entityID)
 	{
-		if (m_indexes.contains(entityID))
+		if (m_sparse.contains(entityID))
 		{
 			return m_components[m_sparse[entityID]];
 		}

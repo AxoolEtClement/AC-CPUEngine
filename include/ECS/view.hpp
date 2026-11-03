@@ -42,7 +42,7 @@ namespace AC_Engine::ECS
 		: m_sets(sets...)
 	{
 		ISparseSet* setsArray[] = { static_cast<ISparseSet*>(sets)... };
-		m_smallestSet = setArray[0];
+		m_smallestSet = setsArray[0];
 		for (ISparseSet* set : setsArray)
 		{
 			if (set->size() < m_smallestSet->size())
