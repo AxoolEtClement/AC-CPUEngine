@@ -89,13 +89,20 @@ int main() {
     meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
     meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);    
 
-    registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id, 
+    auto& emitter{ registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id,
         simd::Vec3f{ 0.f, 1.f, 0.f }, // velocity
-        1.f, // min lifetime
-        2.f, // max lifetime
-        0.1f, // spawn rate
+		20.f, // spawn rate
+        2.f, // base lifetime
+        0.1f, // size
         &particleMat // material
-	);
+    ) };
+    emitter.velocityVariation = simd::Vec3f{ 0.5f, 0.5f, 0.5f };
+    emitter.lifeVariation = 0.5f;
+    emitter.sizeVariation = 0.05f;
+    emitter.startSizeMultiplier = 1.f;
+    emitter.endSizeMultiplier = 0.5f;
+	emitter.drag = 0.2f;
+	emitter.acceleration = simd::Vec3f{ 0.f, -0.5f, 0.f };
 	registry.addComponent<AC_Engine::TransformComponent>(particleEmitterEntity.id);
 
     // Main loop

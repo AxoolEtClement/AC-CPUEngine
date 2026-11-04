@@ -13,7 +13,12 @@ namespace AC_Engine
         simd::Vec3f velocity;
         simd::Vec3f acceleration;
         uint32_t color = 0x00000000;
+
         float size = 0.1f;
+        float startSize = 0.1f;
+		float endSize = 0.1f;
+        float drag = 0.f;
+        
         float life = 0.0f;
 		float maxLife = 1.0f;
 		int nextFreeIndex = -1;
