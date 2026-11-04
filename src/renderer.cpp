@@ -125,7 +125,7 @@ namespace AC_Engine
         //simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
         //V.Normalize();
         // TODO : calculate V for each vertex
-        CameraComponent cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
+        CameraComponent& cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
         cam.aspect = static_cast<float>(width) / static_cast<float>(height);
         simd::Matrix4x4 VP{ cam.projection() * cam.view() };
         
