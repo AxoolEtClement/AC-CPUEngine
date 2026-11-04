@@ -52,26 +52,13 @@ namespace AC_Engine
         void renderFrame();
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
-        void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
         void renderObjectsWireframe(std::vector<Mesh> renderObjects, Camera& cam);
         void renderObjects(ECS::Registry& registry, unsigned int cameraEntityID);
 
         void appendParticlesToRender(const ParticlePool& particlePool, ECS::Registry& registry, unsigned int cameraEntityID);
+    
     private:
-        FrameBuffer& m_frameBuffer;
-        MaterialLibrary& m_materialLibrary;
-        MeshManager& m_meshManager;
-		std::vector<RenderTriangle> m_trianglesToRender;
-
         float barycentricWeights(int x0, int y0, int x1, int y1, int x2, int y2);
-        void drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2);
-        void drawTriangleTexturedAndLit(int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, const Texture& texture, float brightness);
-        void drawTrianglePhong(
-            int x0, int y0, float z0, float iw0, std::pair<float, float> uv0, simd::Vec3f n0,
-			int x1, int y1, float z1, float iw1, std::pair<float, float> uv1, simd::Vec3f n1,
-			int x2, int y2, float z2, float iw2, std::pair<float, float> uv2, simd::Vec3f n2,
-            const Material& mat, const Light& light, simd::Vec3f V);
-
         void drawTrianglePhongInTile(
             const ScreenVertex& v0, const ScreenVertex& v1, const ScreenVertex& v2,
             const Material& mat, const Light& light,
@@ -79,7 +66,11 @@ namespace AC_Engine
 
 		uint32_t color_phong(uint32_t color, float diffuse, float specular);
         void clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out);
-        void projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V);
+
+        FrameBuffer& m_frameBuffer;
+        MaterialLibrary& m_materialLibrary;
+        MeshManager& m_meshManager;
+        std::vector<RenderTriangle> m_trianglesToRender;
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;
