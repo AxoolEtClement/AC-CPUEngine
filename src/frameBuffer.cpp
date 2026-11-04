@@ -21,7 +21,8 @@ namespace AC_Engine
         if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
             return; // Out of bounds
         }
-        m_pixels[y * m_width + x] = color;
+        const int flippedY = m_height - 1 - y;
+        m_pixels[flippedY * m_width + x] = color;
     }
 
     void FrameBuffer::update(int width, int height, float clearColor[4])
