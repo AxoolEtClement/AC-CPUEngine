@@ -33,14 +33,10 @@ int main() {
     AC_Engine::FrameBuffer frameBuffer{ 640, 480 };
     AC_Engine::Renderer renderer{ frameBuffer,materialLibrary, meshManager };
     AC_Engine::gui gui{};
-    AC_Engine::MeshManager meshManager{};
+
     gui.init(window.getWindow());
 
     AC_Engine::CustomUI customUI{};
-
-    /*AC_Engine::CameraManager cam{};
-    cam.createCamera(AC_Engine::FixedCamera{});
-    cam.setActiveCamera(0);*/
 
     AC_Engine::ECS::Entity camEntity{ registry.createEntity() };
     registry.addComponent<AC_Engine::CameraComponent>(
@@ -48,8 +44,10 @@ int main() {
         simd::Vec3f{ 1.f, 1.f, 1.f }, 
         simd::Vec3f{ -0.57735f, -0.57735f, -0.57735f }
     );
+
     AC_Engine::ECS::Entity spot{ registry.createEntity() };
 	AC_Engine::ECS::Entity particleEmitterEntity{ registry.createEntity() };
+    AC_Engine::ECS::Entity terrainEntity{ registry.createEntity() };
     
     simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
@@ -59,13 +57,15 @@ int main() {
     terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
     meshManager.addMesh("terrain", PROJECT_DIR + "/assets/terrain.obj"s);
     meshManager.getMesh("terrain")->initNormals();
-    terrainObj.initNormals();
 
     meshManager.addMesh("spot", PROJECT_DIR + "/assets/spot.obj"s);
     meshManager.getMesh("spot")->initNormals();
 
     registry.addComponent<AC_Engine::MeshComponent>(spot.id, meshManager.getMesh("spot"));
     registry.addComponent<AC_Engine::TransformComponent>(spot.id);
+
+    registry.addComponent<AC_Engine::MeshComponent>(terrainEntity.id, meshManager.getMesh("terrain"));
+    registry.addComponent<AC_Engine::TransformComponent>(terrainEntity.id);
 
     Texture texture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s) };
     Texture particleTexture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s) };
@@ -80,15 +80,13 @@ int main() {
 	particleMat.emissive = { 0.5f, 0.5f, 0.5f };
 	particleMat.buildSpecLut();
 
-    terrainMat.diffuseMap = std::make_shared<Texture>(TerrainTexture);
+    terrainMat.diffuseMap = std::make_shared<Texture>(terrainTexture);
     terrainMat.shininess = 100.f;
     terrainMat.emissive = { 0.f, 0.f, 0.f };
     terrainMat.buildSpecLut();
 
     meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
-    meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);
-    std::vector<Mesh> renderObjects = {obj, terrainObj};
-    
+    meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);    
 
     registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id, 
         simd::Vec3f{ 0.f, 1.f, 0.f }, // velocity
@@ -99,12 +97,9 @@ int main() {
 	);
 	registry.addComponent<AC_Engine::TransformComponent>(particleEmitterEntity.id);
 
-    std::vector<Mesh> renderObjects = {*meshManager.getMesh("spot"), *meshManager.getMesh("terrain")};
-
     // Main loop
     while (!window.shouldClose()) 
     {
-        renderObjects[0].modelMatrix *= rotation;
         window.pollEvents();
         customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
         gui.newFrame();
