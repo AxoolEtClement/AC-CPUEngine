@@ -11,6 +11,7 @@
 #include "material.hpp"
 #include "Particle.hpp"
 #include "proceduralTerrain.hpp"
+#include "moveCamera.hpp"
 #include <iostream>
 
 #include "ECS/registry.hpp"
@@ -113,6 +114,7 @@ int main() {
         renderer.renderObjects(registry, camEntity.id);
         renderer.renderFrame();
         //gui.render(frameBuffer);
+        cameraMover(window.getWindow(),registry,camEntity.id, 0.016f); // TODO : change to real delta time
         window.swapBuffers();
         frameBuffer.clear();
     }
