@@ -2,13 +2,13 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include "renderObject.hpp"
+#include "renderData.hpp"
 
 namespace AC_Engine
 {
     class ObjParser
     {
     public:
-        static renderObject parseObjFile(const std::string& filename);
+        static Mesh parseObjFile(const std::string& filename);
     };
 }

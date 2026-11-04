@@ -12,7 +12,7 @@ struct Vertex
 	simd::Vec3f normal;
 };
 
-struct renderObject
+struct Mesh
 {
     simd::Matrix4x4 modelMatrix{};
     std::vector<Vertex> vertices{};
@@ -22,8 +22,8 @@ struct renderObject
 
     int materialId = 0;
 
-    void initNormals()     {
-        
+    void initNormals()
+    {
         for (auto& vertex : vertices)
         {
             vertex.normal = simd::Vec3f{ 0.f, 0.f, 0.f };

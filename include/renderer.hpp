@@ -1,25 +1,33 @@
 #pragma once
-#include "frameBuffer.hpp"
 #include <math.h>
 #include "Mat4x4.hpp"
 #include "Vec4.hpp"
-#include "renderObject.hpp"
-#include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <vector>
+
+#include "frameBuffer.hpp"
+#include "meshManager.hpp"
+#include "renderData.hpp"
 #include "camera.hpp"
 #include "texture.hpp"
 #include "material.hpp"
 #include "Particle.hpp"
+
+#include "ECS/registry.hpp"
+#include "ECS/components/cameraComponent.hpp"
+#include "ECS/components/meshComponent.hpp"
+#include "ECS/components/transformComponent.hpp"
+
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 namespace AC_Engine
 {
     struct Light 
     {
         simd::Vec3f dir;
-        Color3 color   { 1.f, 1.f, 1.f };
-        float  ambient = 0.18f;
+        Color3 color { 1.f, 1.f, 1.f };
+        float ambient = 0.18f;
     };
 
     struct ScreenVertex {
@@ -38,22 +46,22 @@ namespace AC_Engine
     class Renderer
     {
     public:
-        Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary);
+        Renderer(FrameBuffer& frameBuffer, MaterialLibrary& materialLibrary, MeshManager& meshManager);
         ~Renderer();
 
         void renderFrame();
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
         void drawDemoRGBTriangle(simd::Vec4& v0, simd::Vec4& v1, simd::Vec4& v2, float t);
-        void renderObjectsWireframe(std::vector<renderObject> renderObjects, Camera& cam);
-        void renderObjects(std::vector<renderObject>& renderObjects, Camera& cam);
+        void renderObjectsWireframe(std::vector<Mesh> renderObjects, Camera& cam);
+        void renderObjects(ECS::Registry& registry, unsigned int cameraEntityID);
 
-        void appendParticlesToRender(const ParticlePool& particlePool, Camera& cam);
+        void appendParticlesToRender(const ParticlePool& particlePool, ECS::Registry& registry, unsigned int cameraEntityID);
     private:
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;
+        MeshManager& m_meshManager;
 		std::vector<RenderTriangle> m_trianglesToRender;
-
 
         float barycentricWeights(int x0, int y0, int x1, int y1, int x2, int y2);
         void drawTriangle(int x0, int y0, float z0, int x1, int y1, float z1, int x2, int y2, float z2);
@@ -72,12 +80,10 @@ namespace AC_Engine
 		uint32_t color_phong(uint32_t color, float diffuse, float specular);
         void clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out);
         void projectAndDraw(const std::vector<Vertex>& triangle, const Material& mat, const Light& light, simd::Vec3f V);
-        uint32_t shade(const Material& m, float u, float v,
-                   simd::Vec3f n, const Light& light, simd::Vec3f V);
 
         float ambiantLightIntensity = 0.18f;
 		float specularStrength = 0.5f;
-        Light m_light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, {1.f, 1.f, 1.f}, ambiantLightIntensity };
+        Light m_light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, { 1.f, 1.f, 1.f }, ambiantLightIntensity };
 
 		// Multithreading members
 		std::vector<std::thread> m_threads;
