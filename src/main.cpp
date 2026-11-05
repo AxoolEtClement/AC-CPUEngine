@@ -1,18 +1,16 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "window.hpp"
-#include "frameBuffer.hpp"
-#include "renderer.hpp"
+#include "rendering/frameBuffer.hpp"
+#include "rendering/renderer.hpp"
 #include "gui.hpp"
-#include "Vec4.hpp"
-#include "cameraManager.hpp"
+
 #include "meshManager.hpp"
-#include "texture.hpp"
-#include "font.hpp"
-#include "material.hpp"
+#include "rendering/texture.hpp"
+#include "rendering/font.hpp"
+#include "rendering/material.hpp"
 #include "Particle.hpp"
 #include "proceduralTerrain.hpp"
 #include "moveCamera.hpp"
-#include <iostream>
 
 #include "ECS/registry.hpp"
 #include "ECS/components/cameraComponent.hpp"
@@ -37,6 +35,7 @@ int main() {
 
     gui.init(window.getWindow());
 
+	// entity creation and component addition
     AC_Engine::CustomUI customUI{};
 
     AC_Engine::ECS::Entity camEntity{ registry.createEntity() };
@@ -49,10 +48,8 @@ int main() {
     AC_Engine::ECS::Entity spot{ registry.createEntity() };
 	AC_Engine::ECS::Entity particleEmitterEntity{ registry.createEntity() };
     AC_Engine::ECS::Entity terrainEntity{ registry.createEntity() };
-    
-    simd::Matrix4x4 rotation{ simd::Matrix4x4::RotationX(0.01f) * simd::Matrix4x4::RotationY(0.01f) };
 
-
+	// Procedural terrain generation and mesh loading
     AC_Engine::ProceduralTerrain terrain(100, 100);
     terrain.generateTerrain(0.04f, 0.5f, 4, 15.f);
     terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
@@ -68,6 +65,7 @@ int main() {
     registry.addComponent<AC_Engine::MeshComponent>(terrainEntity.id, meshManager.getMesh("terrain"));
     registry.addComponent<AC_Engine::TransformComponent>(terrainEntity.id);
 
+	// Load textures and set up materials
     Texture texture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s) };
     Texture particleTexture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/particle_tex.png"s) };
     Texture terrainTexture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/terrain.png"s) };
@@ -89,6 +87,7 @@ int main() {
     meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
     meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);    
 
+	// Particle emitter component setup
     auto& emitter{ registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id,
         simd::Vec3f{ 0.f, 1.f, 0.f }, // velocity
 		20.f, // spawn rate

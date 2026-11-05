@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include "Vec3f.hpp"
-#include "material.hpp"
+#include "rendering/material.hpp"
 #include "ECS/registry.hpp"
 #include "ECS/components/particleEmitterComponent.hpp"
 #include "ECS/components/transformComponent.hpp"

@@ -8,8 +8,8 @@
 #include <chrono>
 #include <vector>
 #include <numeric>
-#include "font.hpp"
 #include "imageManager.hpp"
+#include "rendering/font.hpp"
 
 namespace AC_Engine
 {

@@ -4,13 +4,12 @@
 #include "Vec4.hpp"
 #include <vector>
 
-#include "frameBuffer.hpp"
 #include "meshManager.hpp"
-#include "renderData.hpp"
-#include "camera.hpp"
-#include "texture.hpp"
-#include "material.hpp"
 #include "Particle.hpp"
+#include "rendering/frameBuffer.hpp"
+#include "rendering/renderData.hpp"
+#include "rendering/texture.hpp"
+#include "rendering/material.hpp"
 
 #include "ECS/registry.hpp"
 #include "ECS/components/cameraComponent.hpp"
@@ -36,6 +35,7 @@ namespace AC_Engine
         float invW;
         std::pair<float, float> uv;
         simd::Vec3f normal;
+		simd::Vec3f halfVector;
     };
 
     struct RenderTriangle {
@@ -52,7 +52,7 @@ namespace AC_Engine
         void renderFrame();
 
         void drawLine(int x0, int y0, int x1, int y1, unsigned int color);
-        void renderObjectsWireframe(std::vector<Mesh> renderObjects, Camera& cam);
+        void renderObjectsWireframe(ECS::Registry& registry, unsigned int cameraEntityID);
         void renderObjects(ECS::Registry& registry, unsigned int cameraEntityID);
 
         void appendParticlesToRender(const ParticlePool& particlePool, ECS::Registry& registry, unsigned int cameraEntityID);
@@ -65,7 +65,7 @@ namespace AC_Engine
             int tileMinY, int tileMaxY);
 
 		uint32_t color_phong(uint32_t color, float diffuse, float specular);
-        void clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out);
+        void clipTriangle(const std::vector<Vertex>& in, const std::vector<simd::Vec3f>& inh, std::vector<Vertex>& out, std::vector<simd::Vec3f>& outH);
 
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;
