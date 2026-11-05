@@ -109,6 +109,7 @@ int main() {
     {
         window.pollEvents();
         customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
+        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(), 10.0f, 10.0f, 0.1f);
         gui.newFrame();
 
         frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
