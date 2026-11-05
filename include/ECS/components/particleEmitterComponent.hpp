@@ -1,6 +1,6 @@
 #pragma once
 #include "Particle.hpp"
-#include "material.hpp"
+#include "rendering/material.hpp"
 
 namespace AC_Engine
 {
