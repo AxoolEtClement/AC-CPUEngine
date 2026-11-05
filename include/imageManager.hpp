@@ -2,7 +2,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
-#include "texture.hpp"
+#include "rendering/texture.hpp"
 
 namespace AC_Engine
 {

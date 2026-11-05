@@ -11,6 +11,9 @@
 #include "Particle.hpp"
 #include "proceduralTerrain.hpp"
 #include "moveCamera.hpp"
+#include "engineClock.hpp"
+#include <iostream>
+
 
 #include "ECS/registry.hpp"
 #include "ECS/components/cameraComponent.hpp"
@@ -32,6 +35,7 @@ int main() {
     AC_Engine::FrameBuffer frameBuffer{ 640, 480 };
     AC_Engine::Renderer renderer{ frameBuffer,materialLibrary, meshManager };
     AC_Engine::gui gui{};
+    AC_Engine::EngineClock engineClock{};
 
     gui.init(window.getWindow());
 
@@ -107,21 +111,22 @@ int main() {
     // Main loop
     while (!window.shouldClose()) 
     {
+        engineClock.update();
         window.pollEvents();
-        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),"FPS: 60", 10.0f, 20.0f);
-        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(), 10.0f, 10.0f, 0.1f);
+        const std::string fpsText = "FPS: " + std::to_string(static_cast<int>(1.0f / engineClock.getDeltaTime()));
+        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(),fpsText.c_str(), 10.0f, 20.0f);
+        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(), 10.0f, 10.0f, 0.1f);
         gui.newFrame();
 
         frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
 
-		particlePool.updateEmitters(registry, 0.016f); // TODO : change to real delta time
-		particlePool.updateParticles(0.016f); // TODO : change to real delta time
+		particlePool.updateEmitters(registry, engineClock.getDeltaTime());
+		particlePool.updateParticles(engineClock.getDeltaTime());
 
 		renderer.appendParticlesToRender(particlePool, registry, camEntity.id);
         renderer.renderObjects(registry, camEntity.id);
         renderer.renderFrame();
-        //gui.render(frameBuffer);
-        cameraMover(window.getWindow(),registry,camEntity.id, 0.016f); // TODO : change to real delta time
+        cameraMover(window.getWindow(),registry,camEntity.id, engineClock.getDeltaTime());
         window.swapBuffers();
         frameBuffer.clear();
     }

@@ -121,7 +121,7 @@ namespace AC_Engine
 
     CustomUI::CustomUI()
     {
-        m_fontLoaded = m_font.Load("/home/clement/dev/AC-CPUEngine/assets/CreatoDisplay-Regular.otf", 16);
+        m_fontLoaded = m_font.Load(ASSET_DIR "/CreatoDisplay-Regular.otf", 16);
         if (!m_fontLoaded)
             fprintf(stderr, "Impossible de charger la police\n");
     }
@@ -141,9 +141,6 @@ namespace AC_Engine
                     d[0] = r; d[1] = g; d[2] = b; d[3] = 255;
                 }
         };
-        mark(0,        0,        255, 0, 0);   // rouge : coin (0,0) du buffer
-        mark(dstW - 8, 0,        0, 255, 0);   // vert  : coin (dstW-1, 0)
-        mark(0,        dstH - 8, 0, 0, 255);   // bleu  : coin (0, dstH-1)
 
         const float cr = (color >> 24) & 0xFF;
         const float cg = (color >> 16) & 0xFF;

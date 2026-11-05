@@ -3,38 +3,32 @@
 #include "GLFW/glfw3.h"
 #include "ECS/registry.hpp"
 
-void cameraMover(GLFWwindow* window, AC_Engine::ECS::Registry& registry,unsigned int cameraID, float deltaTime)
+void cameraMover(GLFWwindow* window, AC_Engine::ECS::Registry& registry, unsigned int cameraID, float deltaTime)
 {
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    constexpr float speed = 5.f;
+
+    auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
+    const simd::Vec3f right = cam.forward.Cross(cam.up).Normalize();
+    const float step = speed * deltaTime;
+
+    struct KeyBinding
     {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        cam.pos += cam.forward * deltaTime * 5.f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        int key;
+        simd::Vec3f direction;
+    };
+
+    const KeyBinding bindings[] = {
+        { GLFW_KEY_W,            cam.forward },
+        { GLFW_KEY_S,           -cam.forward },
+        { GLFW_KEY_A,            right       },
+        { GLFW_KEY_D,           -right       },
+        { GLFW_KEY_SPACE,        cam.up      },
+        { GLFW_KEY_LEFT_CONTROL, -cam.up     },
+    };
+
+    for (const auto& [key, direction] : bindings)
     {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        cam.pos -= cam.forward * deltaTime * 5.f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        simd::Vec3f right = cam.forward.Cross(cam.up).Normalize();
-        cam.pos += right * deltaTime * 5.f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        simd::Vec3f right = cam.forward.Cross(cam.up).Normalize();
-        cam.pos -= right * deltaTime * 5.f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-    {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        cam.pos += cam.up * deltaTime * 5.f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-    {
-        auto& cam = registry.getComponent<AC_Engine::CameraComponent>(cameraID);
-        cam.pos -= cam.up * deltaTime * 5.f;
+        if (glfwGetKey(window, key) == GLFW_PRESS)
+            cam.pos += direction * step;
     }
 }
