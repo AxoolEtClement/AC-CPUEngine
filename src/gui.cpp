@@ -1,5 +1,5 @@
 #include "gui.hpp"
-#include "frameBuffer.hpp"
+#include "rendering/frameBuffer.hpp"
 
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE 0x812F
@@ -121,7 +121,7 @@ namespace AC_Engine
 
     CustomUI::CustomUI()
     {
-        m_fontLoaded = m_font.Load("/home/clement/dev/AC-CPUEngine/assets/CreatoDisplay-Regular.otf", 16);
+        m_fontLoaded = m_font.Load(ASSET_DIR "/CreatoDisplay-Regular.otf", 16);
         if (!m_fontLoaded)
             fprintf(stderr, "Impossible de charger la police\n");
     }
@@ -141,9 +141,6 @@ namespace AC_Engine
                     d[0] = r; d[1] = g; d[2] = b; d[3] = 255;
                 }
         };
-        mark(0,        0,        255, 0, 0);   // rouge : coin (0,0) du buffer
-        mark(dstW - 8, 0,        0, 255, 0);   // vert  : coin (dstW-1, 0)
-        mark(0,        dstH - 8, 0, 0, 255);   // bleu  : coin (0, dstH-1)
 
         const float cr = (color >> 24) & 0xFF;
         const float cg = (color >> 16) & 0xFF;
@@ -188,6 +185,41 @@ namespace AC_Engine
                 }
             }
             x += g.xadvance;
+        }
+    }
+
+    void CustomUI::drawImage(std::string imagePath, uint8_t* dst, int dstW, int dstH, float x, float y, float scale)
+    {
+        if (!dst) return;
+
+        m_imageManager.addImage(imagePath);
+        auto texture = m_imageManager.getImage(imagePath);
+        if (texture->pixels == nullptr) return;
+
+        int imgW = static_cast<int>(texture->width * scale);
+        int imgH = static_cast<int>(texture->height * scale);
+
+        for (int j = 0; j < imgH; ++j)
+        {
+            int dy = static_cast<int>(y + j);
+            if (dy < 0 || dy >= dstH) continue;
+
+            for (int i = 0; i < imgW; ++i)
+            {
+                int dx = static_cast<int>(x + i);
+                if (dx < 0 || dx >= dstW) continue;
+
+                // Calculate the corresponding pixel in the original texture
+                int texX = static_cast<int>(i / scale);
+                int texY = static_cast<int>(j / scale);
+
+                uint32_t c = TextureLoader::sampleTextureBilinear(*texture, texX / static_cast<float>(texture->width), texY / static_cast<float>(texture->height));
+                uint8_t* d = &dst[(dy * dstW + dx) * 4];
+                d[0] = c & 0xFF;         // Blue
+                d[1] = (c >> 8) & 0xFF;  // Green
+                d[2] = (c >> 16) & 0xFF; // Red
+                d[3] = (c >> 24) & 0xFF; // Alpha
+            }
         }
     }
 }

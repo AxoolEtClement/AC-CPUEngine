@@ -57,26 +57,6 @@ namespace AC_Engine
         }
     }
 
-    void ProceduralTerrain::applyErosion(int iterations, float erosionFactor)
-    {
-        // Implementation for applying erosion to the terrain
-    }
-
-    void ProceduralTerrain::smoothTerrain(int iterations)
-    {
-        // Implementation for smoothing the terrain
-    }
-
-    void ProceduralTerrain::normalizeTerrain()
-    {
-        // Implementation for normalizing the terrain height values
-    }
-
-    void ProceduralTerrain::saveHeightmap(const std::string& filename) const
-    {
-        // Implementation for saving the heightmap to a file
-    }
-
     void ProceduralTerrain::generateObj(const std::string& filename)
     {
         std::ofstream outFile(filename);

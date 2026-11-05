@@ -4,7 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <memory>
-#include "texture.hpp"
+#include "rendering/texture.hpp"
 
 struct Color3 { float r = 1, g = 1, b = 1; };
 

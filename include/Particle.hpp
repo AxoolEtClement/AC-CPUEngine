@@ -1,7 +1,10 @@
 #pragma once
 #include <vector>
 #include "Vec3f.hpp"
-#include "material.hpp"
+#include "rendering/material.hpp"
+#include "ECS/registry.hpp"
+#include "ECS/components/particleEmitterComponent.hpp"
+#include "ECS/components/transformComponent.hpp"
 
 namespace AC_Engine
 {
@@ -10,7 +13,12 @@ namespace AC_Engine
         simd::Vec3f velocity;
         simd::Vec3f acceleration;
         uint32_t color = 0x00000000;
+
         float size = 0.1f;
+        float startSize = 0.1f;
+		float endSize = 0.1f;
+        float drag = 0.f;
+        
         float life = 0.0f;
 		float maxLife = 1.0f;
 		int nextFreeIndex = -1;
@@ -25,28 +33,11 @@ namespace AC_Engine
         ParticlePool(size_t poolSize);
         Particle* createParticle();
         void updateParticles(float deltaTime);
+		void updateEmitters(AC_Engine::ECS::Registry& registry, float deltaTime);
 
         const std::vector<Particle>& getParticles() const;
     private:
         std::vector<Particle> m_particles;
         int m_firstFreeIndex = -1;
-    };
-
-    class ParticleEmitter {
-    public:
-        ParticleEmitter(ParticlePool* pool, const simd::Vec3f& position, float spawnRate, float particleLife, float particleSize, Material* mat);
-
-		void setVelocity(const simd::Vec3f& velocity) { m_velocity = velocity; }
-
-        void update(float deltaTime);
-    private:
-        ParticlePool* m_pool;
-        simd::Vec3f m_position;
-		simd::Vec3f m_velocity;
-        float m_spawnRate;
-        float m_ParticleLife;
-		float m_ParticleSize;
-		float m_timeSinceLastSpawn = 0.0f;
-        Material* m_mat;
     };
 }

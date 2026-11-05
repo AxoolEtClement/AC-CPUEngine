@@ -3,9 +3,9 @@
 #include <iostream>
 #include <sstream>
 
-renderObject AC_Engine::ObjParser::parseObjFile(const std::string& filename)
+Mesh AC_Engine::ObjParser::parseObjFile(const std::string& filename)
 {
-    renderObject obj;
+    Mesh obj;
     std::ifstream file(filename);
     if (!file.is_open())
     {

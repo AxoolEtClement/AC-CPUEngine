@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdint>
 #include <stdexcept>
+#include <cmath>
+#include <algorithm>
 
 
 struct Texture

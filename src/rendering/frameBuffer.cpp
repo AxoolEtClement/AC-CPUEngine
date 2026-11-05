@@ -1,10 +1,11 @@
-#include "frameBuffer.hpp"
+#include "rendering/frameBuffer.hpp"
 
 namespace AC_Engine
 {
     FrameBuffer::FrameBuffer(int width, int height) : m_width(width), m_height(height)
     {
         m_pixels.resize(m_width * m_height, 0);
+
         m_UiPixels.resize((m_width) * m_height, 0);
         m_transparentPixels.resize(m_width * m_height, 0);
         m_zBuffer.resize(m_width * m_height, 1e30f);
@@ -19,18 +20,14 @@ namespace AC_Engine
 
     void FrameBuffer::setPixel(int x, int y, unsigned int color)
     {
-        if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-            return; // Out of bounds
-        }
-        m_pixels[y * m_width + x] = color;
+        const int flippedY = m_height - 1 - y;
+        m_pixels[flippedY * m_width + x] = color;
     }
 
     void FrameBuffer::setTransparentPixel(int x, int y, unsigned int color)
     {
-        if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-            return; // Out of bounds
-        }
-        m_transparentPixels[y * m_width + x] = color;
+        const int flippedY = m_height - 1 - y;
+        m_transparentPixels[flippedY * m_width + x] = color;
     }
 
     void FrameBuffer::update(int width, int height, float clearColor[4])
