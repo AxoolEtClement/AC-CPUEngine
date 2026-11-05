@@ -617,7 +617,6 @@ namespace AC_Engine
 			}
         }
     }
-
     void Renderer::renderTile(int threadId)
     {
 		// Calculates the vertical slice of the framebuffer for this thread vefore rendering
