@@ -1,5 +1,4 @@
-#include "renderer.hpp"
-#include <iostream>
+#include "rendering/renderer.hpp"
 
 namespace AC_Engine
 {
@@ -13,7 +12,6 @@ namespace AC_Engine
                 threadLoop(i);
             });
         }
-		std::cout << m_numThreads << " threads created for rendering." << std::endl;
     }
     Renderer::~Renderer()
     {
@@ -31,7 +29,6 @@ namespace AC_Engine
         glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getPixels() );
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        //glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
         glDisable(GL_BLEND);
     }
 
@@ -54,16 +51,20 @@ namespace AC_Engine
         }
     }
 
-    void Renderer::renderObjectsWireframe(std::vector <Mesh> renderObjects, Camera& cam)
+    void Renderer::renderObjectsWireframe(ECS::Registry& registry, unsigned int cameraEntityID)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
 
-        simd::Matrix4x4 VP{ cam.perspective() * cam.look_at() };
-        for (const auto& obj : renderObjects) {
+		CameraComponent& cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
+
+        simd::Matrix4x4 VP{ cam.projection() * cam.view() };
+		for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
+        {
+			auto& obj = *mesh.mesh;
             std::vector<simd::Vec3f> verticesNdc;
             std::vector<bool> visible;
-            simd::Matrix4x4 MVP{ VP * obj.modelMatrix };
+            simd::Matrix4x4 MVP{ VP * transform.getTransformMatrix() };
             float dmin = 1e30f, dmax = -1e30f;
 
             for (const auto& vertex : obj.vertices)
@@ -121,14 +122,12 @@ namespace AC_Engine
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
 
-        Light light{ simd::Vec3f{ 0.57735f, 0.57735f, 0.57735f }, {1.f, 1.f, 1.f}, ambiantLightIntensity };
-        //simd::Vec3f V{ cam.pos.getX(), cam.pos.getY(), cam.pos.getZ() };
-        //V.Normalize();
         // TODO : calculate V for each vertex
         CameraComponent& cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
         cam.aspect = static_cast<float>(width) / static_cast<float>(height);
         simd::Matrix4x4 VP{ cam.projection() * cam.view() };
         
+		// Iterate over all entities with MeshComponent and TransformComponent
         for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
         {
             auto& obj = *mesh.mesh;
@@ -137,29 +136,25 @@ namespace AC_Engine
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
-
+            
+            // project and clip vertices
             for (const auto& vertex : obj.vertices) 
             {
                 simd::Vec4 clip{ MVP * vertex.pos };
                 clipCoord.push_back(clip);
 
-                // CORRECTION : S�curiser la normalisation
                 simd::Vec3f transformedNormal = obj.modelMatrix.TransformDirection(vertex.normal);
 
-                // On v�rifie si la normale transform�e n'est pas nulle avant d'appeler Normalize()
-                // Si votre structure de vecteur poss�de une m�thode de longueur ou si vous pouvez tester ses composants :
-                float lengthSq = transformedNormal.getX() * transformedNormal.getX() + 
-                                 transformedNormal.getY() * transformedNormal.getY() + 
-                                 transformedNormal.getZ() * transformedNormal.getZ();
+				float lengthSq = transformedNormal.MagnitudeSquared();
 
                 if (lengthSq > 0.0001f) {
                     worldNormals.push_back(transformedNormal.Normalize());
                 } else {
-                    // Si le mesh n'a pas de normales (comme le terrain actuel), on met une normale par d�faut vers le haut
                     worldNormals.push_back(simd::Vec3f{ 0.0f, 1.0f, 0.0f }); 
                 }
             }
 
+			// Iterate over faces and prepare triangles for rendering
             for (size_t f = 0; f < obj.faces.size(); f++) {
                 Vertex v0{}, v1{}, v2{};
                 v0.pos = clipCoord[obj.faces[f][0]];
@@ -192,20 +187,21 @@ namespace AC_Engine
                 }
             }
         }
-
+		// Notify threads to start rendering
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_activeThreads = m_numThreads;
             m_frameCounter++;
         }
         m_cvStartThreads.notify_all();
-
+		// Wait for all threads to finish rendering
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_cvThreadsDone.wait(lock, [this]() {
                 return m_activeThreads == 0;
                 });
         }
+		// Clear the triangles to render for the next frame
         m_trianglesToRender.clear();
     }
 
@@ -241,6 +237,7 @@ namespace AC_Engine
 
         if (minX > maxX || minY > maxY) return;
 
+		// initial values for interpolation
         float z0 = v0.z, z1 = v1.z, z2 = v2.z;
         float iw0 = v0.invW, iw1 = v1.invW, iw2 = v2.invW;
 
@@ -259,6 +256,7 @@ namespace AC_Engine
         int A1 = y2 - y0, B1 = x0 - x2;
         int A2 = y0 - y1, B2 = x1 - x0;
 
+		// deltas for interpolation
         float dzdx = (A0 * z0 + A1 * z1 + A2 * z2) * invArea;
         float dzdy = (B0 * z0 + B1 * z1 + B2 * z2) * invArea;
 
@@ -455,12 +453,12 @@ namespace AC_Engine
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
 
+		// creating billboards and separating them into triangles for rendering for each alive particle
         for (const auto& p : particlePool.getParticles()) {
             if (!p.isAlive()) continue;
 
             float s = p.size * 0.5f;
 
-            // Build the 4 corners of the particle billboard quad in 3D world space facing the camera
             simd::Vec4 p0_world{ p.position.getX() - camRight.getX() * s - camUp.getX() * s,
                                  p.position.getY() - camRight.getY() * s - camUp.getY() * s,
                                  p.position.getZ() - camRight.getZ() * s - camUp.getZ() * s, 1.0f };
@@ -474,7 +472,6 @@ namespace AC_Engine
                                  p.position.getY() - camRight.getY() * s + camUp.getY() * s,
                                  p.position.getZ() - camRight.getZ() * s + camUp.getZ() * s, 1.0f };
 
-            // Transform into clip space using your VP matrix
             simd::Vec4 c0 = VP * p0_world;
             simd::Vec4 c1 = VP * p1_world;
             simd::Vec4 c2 = VP * p2_world;
@@ -508,6 +505,7 @@ namespace AC_Engine
         while (true) {
             std::unique_lock<std::mutex> lock(m_mutex);
 
+            // Wait for the main thread to signal that a new frame is ready to be rendered
             m_cvStartThreads.wait(lock, [this, lastFrame]() {
                 return m_stopThreads || m_frameCounter > lastFrame;
                 });
@@ -519,7 +517,7 @@ namespace AC_Engine
             lock.unlock();
 
             renderTile(threadId);
-
+			// Notify the main thread that this thread has finished rendering its tile
             lock.lock();
             m_activeThreads--;
             if (m_activeThreads == 0) 
@@ -531,6 +529,8 @@ namespace AC_Engine
 
     void Renderer::renderTile(int threadId)
     {
+		// Calculates the vertical slice of the framebuffer for this thread vefore rendering
+		// could prevent doing it each frame somehow but this is to endure proper scaling if the window is resized
 		int height = m_frameBuffer.getHeight();
 		int sliceHeight = height / m_numThreads;
 		int startY = threadId * sliceHeight;

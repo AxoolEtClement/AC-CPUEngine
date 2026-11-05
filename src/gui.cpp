@@ -1,5 +1,5 @@
 #include "gui.hpp"
-#include "frameBuffer.hpp"
+#include "rendering/frameBuffer.hpp"
 
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE 0x812F
