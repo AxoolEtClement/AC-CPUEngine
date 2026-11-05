@@ -21,12 +21,6 @@ namespace AC_Engine
         void generateTerrain(float scale, float persistence, int octaves, float heightScale = 15.0f);
         void generateObj(const std::string& filename);
 
-    protected:
-        void applyErosion(int iterations, float erosionFactor);
-        void smoothTerrain(int iterations);
-        void normalizeTerrain();
-        void saveHeightmap(const std::string& filename) const;
-
     private:
         inline float fade(float t)
         {

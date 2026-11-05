@@ -5,7 +5,7 @@ namespace AC_Engine
     FrameBuffer::FrameBuffer(int width, int height) : m_width(width), m_height(height)
     {
         m_pixels.resize(m_width * m_height, 0);
-        m_UiPixels.resize((m_width) * m_height, 0);
+        m_UiPixels.resize((m_width / 4) * m_height, 0);
         m_zBuffer.resize(m_width * m_height, 1e30f);
 
         for (std::size_t i = 0; i < m_pixels.size(); ++i) 
@@ -18,9 +18,6 @@ namespace AC_Engine
 
     void FrameBuffer::setPixel(int x, int y, unsigned int color)
     {
-        if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-            return; // Out of bounds
-        }
         const int flippedY = m_height - 1 - y;
         m_pixels[flippedY * m_width + x] = color;
     }
@@ -43,7 +40,7 @@ namespace AC_Engine
         m_width = width;
         m_height = height;
         m_pixels.resize(m_width * m_height);
-        m_UiPixels.resize((m_width) * m_height);
+        m_UiPixels.resize((m_width / 4) * m_height);
         m_zBuffer.resize(m_width * m_height);
     }
 
