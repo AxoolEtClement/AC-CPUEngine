@@ -26,6 +26,7 @@ using namespace std::string_literals;
 int main() {
     MaterialLibrary materialLibrary{};
     Material mat{};
+    Material transparentMat{};
     Material particleMat{};
     Material terrainMat{};
     AC_Engine::ECS::Registry registry{};
@@ -52,22 +53,32 @@ int main() {
     AC_Engine::ECS::Entity spot{ registry.createEntity() };
 	AC_Engine::ECS::Entity particleEmitterEntity{ registry.createEntity() };
     AC_Engine::ECS::Entity terrainEntity{ registry.createEntity() };
+    AC_Engine::ECS::Entity transparentSpot{ registry.createEntity() };
 
 	// Procedural terrain generation and mesh loading
     AC_Engine::ProceduralTerrain terrain(100, 100);
     terrain.generateTerrain(0.04f, 0.5f, 4, 15.f);
     terrain.generateObj(PROJECT_DIR + "/assets/terrain.obj"s);
+
     meshManager.addMesh("terrain", PROJECT_DIR + "/assets/terrain.obj"s);
     meshManager.getMesh("terrain")->initNormals();
 
+
     meshManager.addMesh("spot", PROJECT_DIR + "/assets/spot.obj"s);
     meshManager.getMesh("spot")->initNormals();
+
+    meshManager.addMesh("transparentSpot", PROJECT_DIR + "/assets/spot.obj"s);
+    meshManager.getMesh("transparentSpot")->initNormals();
 
     registry.addComponent<AC_Engine::MeshComponent>(spot.id, meshManager.getMesh("spot"));
     registry.addComponent<AC_Engine::TransformComponent>(spot.id);
 
     registry.addComponent<AC_Engine::MeshComponent>(terrainEntity.id, meshManager.getMesh("terrain"));
     registry.addComponent<AC_Engine::TransformComponent>(terrainEntity.id);
+
+    registry.addComponent<AC_Engine::MeshComponent>(transparentSpot.id, meshManager.getMesh("transparentSpot"));
+    registry.addComponent<AC_Engine::TransformComponent>(transparentSpot.id);
+    registry.getComponent<AC_Engine::TransformComponent>(transparentSpot.id).position = simd::Vec3f{ 2.f, 0.f, 0.f };
 
 	// Load textures and set up materials
     Texture texture{ TextureLoader::loadTexture(PROJECT_DIR + "/assets/spot_texture.png"s) };
@@ -77,6 +88,11 @@ int main() {
     mat.diffuseMap = std::make_shared<Texture>(texture);
     mat.shininess  = 32.f;
     mat.buildSpecLut();
+
+    transparentMat.diffuseMap = std::make_shared<Texture>(texture);
+    transparentMat.shininess  = 32.f;
+    transparentMat.opacity = 0.5f; // Set opacity to 50% for transparency
+    transparentMat.buildSpecLut();
 
 	particleMat.diffuseMap = std::make_shared<Texture>(particleTexture);
 	particleMat.shininess = 32.f;
@@ -89,7 +105,9 @@ int main() {
     terrainMat.buildSpecLut();
 
     meshManager.getMesh("spot")->materialId = materialLibrary.add(mat);
-    meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);    
+    meshManager.getMesh("terrain")->materialId = materialLibrary.add(terrainMat);
+    meshManager.getMesh("transparentSpot")->materialId = materialLibrary.add(transparentMat);
+
 
 	// Particle emitter component setup
     auto& emitter{ registry.addComponent<AC_Engine::ParticleEmitterComponent>(particleEmitterEntity.id,
@@ -108,17 +126,19 @@ int main() {
 	emitter.acceleration = simd::Vec3f{ 0.f, -0.5f, 0.f };
 	registry.addComponent<AC_Engine::TransformComponent>(particleEmitterEntity.id);
 
+    
+
     // Main loop
     while (!window.shouldClose()) 
     {
         engineClock.update();
         window.pollEvents();
+        frameBuffer.update(window.getWidth(), window.getHeight(), nullptr); // Update the framebuffer in case the window size has changed
+
         const std::string fpsText = "FPS: " + std::to_string(static_cast<int>(1.0f / engineClock.getDeltaTime()));
         customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(),fpsText.c_str(), 10.0f, 20.0f);
         customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(), 10.0f, 10.0f, 0.1f);
         gui.newFrame();
-
-        frameBuffer.update(window.getWidth(), window.getHeight(), 0x00000000); // Update the framebuffer in case the window size has changed
 
 		particlePool.updateEmitters(registry, engineClock.getDeltaTime());
 		particlePool.updateParticles(engineClock.getDeltaTime());
