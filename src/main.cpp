@@ -136,8 +136,8 @@ int main() {
         frameBuffer.update(window.getWidth(), window.getHeight(), nullptr); // Update the framebuffer in case the window size has changed
 
         const std::string fpsText = "FPS: " + std::to_string(static_cast<int>(1.0f / engineClock.getDeltaTime()));
-        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(),fpsText.c_str(), 10.0f, 20.0f);
-        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth(), window.getHeight(), 10.0f, 10.0f, 0.1f);
+        customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(),fpsText.c_str(), 10.0f, 20.0f);
+        customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(), 10.0f, 10.0f, 0.1f);
         gui.newFrame();
 
 		particlePool.updateEmitters(registry, engineClock.getDeltaTime());

@@ -6,7 +6,7 @@ namespace AC_Engine
     {
         m_pixels.resize(m_width * m_height, 0);
 
-        m_UiPixels.resize((m_width) * m_height, 0);
+        m_UiPixels.resize((m_width / 4) * m_height, 0);
         m_transparentPixels.resize(m_width * m_height, 0);
         m_zBuffer.resize(m_width * m_height, 1e30f);
 
@@ -49,7 +49,7 @@ namespace AC_Engine
         m_height = height;
         m_pixels.resize(m_width * m_height);
         m_transparentPixels.resize(m_width * m_height);
-        m_UiPixels.resize((m_width) * m_height);
+        m_UiPixels.resize((m_width / 4) * m_height);
         m_zBuffer.resize(m_width * m_height);
     }
 

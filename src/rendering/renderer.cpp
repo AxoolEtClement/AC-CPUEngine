@@ -1,4 +1,20 @@
 #include "rendering/renderer.hpp"
+#include <algorithm>
+
+static uint32_t blendOver(uint32_t src, uint32_t dst)   // formats AABBGGRR, alpha droit
+{
+    float sa = ((src >> 24) & 0xFF) / 255.f;
+    float da = ((dst >> 24) & 0xFF) / 255.f;
+    float oa = sa + da * (1.f - sa);
+    if (oa <= 0.f) return 0;
+
+    auto ch = [&](int shift) -> uint32_t {
+        float s = float((src >> shift) & 0xFF);
+        float d = float((dst >> shift) & 0xFF);
+        return (uint32_t)((s * sa + d * da * (1.f - sa)) / oa + 0.5f);
+    };
+    return ((uint32_t)(oa * 255.f + 0.5f) << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
 
 namespace AC_Engine
 {
@@ -29,6 +45,7 @@ namespace AC_Engine
         glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getPixels() );
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDrawPixels( m_frameBuffer.getWidth(), m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getTransparentPixels() );
         glDrawPixels( m_frameBuffer.getWidth() / 4, m_frameBuffer.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, m_frameBuffer.getUiPixels() );
         glDisable(GL_BLEND);
     }
@@ -133,12 +150,21 @@ namespace AC_Engine
         simd::Matrix4x4 VP{ cam.projection() * cam.view() };
         
 		simd::Vec3f camPos = cam.pos;
+
+        // Les objets transparents sont mis de cote (avec leur distance a la camera)
+        // pour etre dessines apres les opaques, du plus loin au plus proche
+        std::vector<std::pair<float, decltype(m_trianglesToRender)>> transparentObjects;
+
 		// Iterate over all entities with MeshComponent and TransformComponent
         for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
         {
             auto& obj = *mesh.mesh;
             const Material& mat = m_materialLibrary.get(obj.materialId);
             simd::Matrix4x4 MVP{ VP * transform.getTransformMatrix() };
+
+            const bool isTransparent = mat.opacity < 1.0f;
+            decltype(m_trianglesToRender) objectTriangles;
+            auto& targetTriangles = isTransparent ? objectTriangles : m_trianglesToRender;
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
@@ -205,11 +231,26 @@ namespace AC_Engine
 					sv2.halfVector = clippedH[i * 3 + 2];
 
                     if (barycentricWeights(sv0.x, sv0.y, sv1.x, sv1.y, sv2.x, sv2.y) > 0) {
-                        m_trianglesToRender.push_back({ {sv0, sv1, sv2}, &mat });
+                        targetTriangles.push_back({ {sv0, sv1, sv2}, &mat });
                     }
                 }
             }
+
+            if (isTransparent)
+            {
+                simd::Vec3f center = transform.getTransformMatrix().TransformPoint(simd::Vec3f{ 0.f, 0.f, 0.f });
+                transparentObjects.emplace_back(camPos.DistanceSquared(center), std::move(objectTriangles));
+            }
         }
+
+        // Transparent objects: farthest first, appended after all opaque triangles
+        std::sort(transparentObjects.begin(), transparentObjects.end(),
+            [](const auto& a, const auto& b) { return a.first > b.first; });
+        for (auto& entry : transparentObjects)
+        {
+            m_trianglesToRender.insert(m_trianglesToRender.end(), entry.second.begin(), entry.second.end());
+        }
+
 		// Notify threads to start rendering
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -266,7 +307,6 @@ namespace AC_Engine
         float iw0 = v0.invW, iw1 = v1.invW, iw2 = v2.invW;
 
         float invArea = 1.f / static_cast<float>(area);
-        //simd::Vec3f H = (light.dir + simd::Vec3f{ 1.f, 1.f, 1.f }).Normalize(); // TODO change to use cam pos
 
         float u0w = v0.uv.first * iw0, v0w = v0.uv.second * iw0;
         float u1w = v1.uv.first * iw1, v1w = v1.uv.second * iw1;
@@ -283,6 +323,11 @@ namespace AC_Engine
         int A0 = y1 - y2, B0 = x2 - x1;
         int A1 = y2 - y0, B1 = x0 - x2;
         int A2 = y0 - y1, B2 = x1 - x0;
+
+        // Top-left fill rule: avoids drawing shared edges twice (double blending on transparent triangles)
+        const int bias0 = (A0 > 0 || (A0 == 0 && B0 > 0)) ? 0 : -1;
+        const int bias1 = (A1 > 0 || (A1 == 0 && B1 > 0)) ? 0 : -1;
+        const int bias2 = (A2 > 0 || (A2 == 0 && B2 > 0)) ? 0 : -1;
 
 		// deltas for interpolation
         float dzdx = (A0 * z0 + A1 * z1 + A2 * z2) * invArea;
@@ -336,7 +381,7 @@ namespace AC_Engine
 
             for (int x = minX; x <= maxX; x++)
             {
-                if ((e0 | e1 | e2) < 0)
+                if (((e0 + bias0) | (e1 + bias1) | (e2 + bias2)) < 0)
                 {
                     if (inside) break;
                     e0 += A0; e1 += A1; e2 += A2;
@@ -379,8 +424,20 @@ namespace AC_Engine
 
                 auto to8 = [](float val) { return (uint32_t)(std::clamp(val, 0.f, 1.f) * 255.f + 0.5f); };
 
+                uint32_t out = (to8(b) << 16) | (to8(g) << 8) | to8(r);
+
                 m_frameBuffer.getZBuffer()[idx] = z;
-                m_frameBuffer.setPixel(x, y, 0xFF000000 | (to8(b) << 16) | (to8(g) << 8) | to8(r));
+
+                if (mat.opacity < 1.0f)
+                {
+                    uint32_t src = ((uint32_t)(mat.opacity * 255.f + 0.5f) << 24) | out;
+                    uint32_t dst = m_frameBuffer.getTransparentPixels()[idx];
+                    m_frameBuffer.setTransparentPixel(x, y, blendOver(src, dst));
+                }
+                else
+                {
+                    m_frameBuffer.setPixel(x, y, 0xFF000000 | out);
+                }
 
                 e0 += A0; e1 += A1; e2 += A2;
                 z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
