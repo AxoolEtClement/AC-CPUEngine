@@ -15,7 +15,17 @@ namespace AC_Engine
 		float spawnRate;
 		float ParticleLife;
 		float ParticleSize;
-		float timeSinceLastSpawn = 0.0f;
 		Material* mat;
+
+		simd::Vec3f velocityVariation{ 0.0f, 0.0f, 0.0f };
+		float lifeVariation{ 0.f };
+		float sizeVariation{ 0.f };
+
+		float startSizeMultiplier{ 1.f };
+		float endSizeMultiplier{ 0.f };
+		float drag{ 0.f };
+		simd::Vec3f acceleration{ 0.0f, 0.0f, 0.0f };
+
+		float timeSinceLastSpawn{ 0.f };
 	};
 }
