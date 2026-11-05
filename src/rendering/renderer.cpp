@@ -116,17 +116,22 @@ namespace AC_Engine
         }
     }
 
+    inline simd::Vec3f computeHalfVector(const simd::Vec3f& lightDir, const simd::Vec3f& viewDir)
+    {
+        return (lightDir + viewDir).Normalize();
+	}
+
     void Renderer::renderObjects(ECS::Registry& registry, unsigned int cameraEntityID)
     {
         int width = m_frameBuffer.getWidth();
         int height = m_frameBuffer.getHeight();
         m_frameBuffer.clearZBuffer();
 
-        // TODO : calculate V for each vertex
         CameraComponent& cam{ registry.getComponent<CameraComponent>(cameraEntityID) };
         cam.aspect = static_cast<float>(width) / static_cast<float>(height);
         simd::Matrix4x4 VP{ cam.projection() * cam.view() };
         
+		simd::Vec3f camPos = cam.pos;
 		// Iterate over all entities with MeshComponent and TransformComponent
         for (const auto& [mesh, transform] : registry.view<MeshComponent, TransformComponent>())
         {
@@ -136,6 +141,7 @@ namespace AC_Engine
 
             std::vector<simd::Vec4> clipCoord{};
             std::vector<simd::Vec3f> worldNormals{};
+			std::vector<simd::Vec3f> worldPositions{};
             
             // project and clip vertices
             for (const auto& vertex : obj.vertices) 
@@ -143,8 +149,11 @@ namespace AC_Engine
                 simd::Vec4 clip{ MVP * vertex.pos };
                 clipCoord.push_back(clip);
 
-                simd::Vec3f transformedNormal = obj.modelMatrix.TransformDirection(vertex.normal);
+				simd::Vec4 tempWorldPos = transform.getTransformMatrix() * vertex.pos;
+                simd::Vec3f worldPos{ tempWorldPos.getX(), tempWorldPos.getY(), tempWorldPos.getZ() };
+				worldPositions.push_back(worldPos);
 
+                simd::Vec3f transformedNormal = transform.getTransformMatrix().TransformDirection(vertex.normal);
 				float lengthSq = transformedNormal.MagnitudeSquared();
 
                 if (lengthSq > 0.0001f) {
@@ -161,6 +170,14 @@ namespace AC_Engine
                 v1.pos = clipCoord[obj.faces[f][1]];
                 v2.pos = clipCoord[obj.faces[f][2]];
 
+                simd::Vec3f wp0 = worldPositions[obj.faces[f][0]];
+                simd::Vec3f wp1 = worldPositions[obj.faces[f][1]];
+                simd::Vec3f wp2 = worldPositions[obj.faces[f][2]];
+
+				simd::Vec3f h0 = computeHalfVector(m_light.dir, (camPos - wp0).Normalize());
+				simd::Vec3f h1 = computeHalfVector(m_light.dir, (camPos - wp1).Normalize());
+				simd::Vec3f h2 = computeHalfVector(m_light.dir, (camPos - wp2).Normalize());
+
                 if (obj.face_uvs.size() >= (f + 1) * 3) {
                     v0.texCoord = obj.uvs[obj.face_uvs[f * 3 + 0]];
                     v1.texCoord = obj.uvs[obj.face_uvs[f * 3 + 1]];
@@ -174,12 +191,17 @@ namespace AC_Engine
                 v2.normal = worldNormals[obj.faces[f][2]];
 
                 std::vector<Vertex> clippedVertices{};
-                clipTriangle({ v0, v1, v2 }, clippedVertices);
+				std::vector<simd::Vec3f> clippedH{};
+                clipTriangle({ v0, v1, v2 }, { h0, h1, h2 }, clippedVertices, clippedH);
 
                 for (size_t i = 0; i < clippedVertices.size() / 3; i++) {
                     ScreenVertex sv0 = projectVertex(clippedVertices[i * 3 + 0], width, height);
                     ScreenVertex sv1 = projectVertex(clippedVertices[i * 3 + 1], width, height);
                     ScreenVertex sv2 = projectVertex(clippedVertices[i * 3 + 2], width, height);
+
+					sv0.halfVector = clippedH[i * 3 + 0];
+					sv1.halfVector = clippedH[i * 3 + 1];
+					sv2.halfVector = clippedH[i * 3 + 2];
 
                     if (barycentricWeights(sv0.x, sv0.y, sv1.x, sv1.y, sv2.x, sv2.y) > 0) {
                         m_trianglesToRender.push_back({ {sv0, sv1, sv2}, &mat });
@@ -201,7 +223,8 @@ namespace AC_Engine
                 return m_activeThreads == 0;
                 });
         }
-		// Clear the triangles to render for the next frame
+
+        // Clear the triangles to render for the next frame
         m_trianglesToRender.clear();
     }
 
@@ -242,7 +265,7 @@ namespace AC_Engine
         float iw0 = v0.invW, iw1 = v1.invW, iw2 = v2.invW;
 
         float invArea = 1.f / static_cast<float>(area);
-        simd::Vec3f H = (light.dir + simd::Vec3f{ 1.f, 1.f, 1.f }).Normalize(); // TODO change to use cam pos
+        //simd::Vec3f H = (light.dir + simd::Vec3f{ 1.f, 1.f, 1.f }).Normalize(); // TODO change to use cam pos
 
         float u0w = v0.uv.first * iw0, v0w = v0.uv.second * iw0;
         float u1w = v1.uv.first * iw1, v1w = v1.uv.second * iw1;
@@ -251,6 +274,10 @@ namespace AC_Engine
         simd::Vec3f n0w = v0.normal * iw0;
         simd::Vec3f n1w = v1.normal * iw1;
         simd::Vec3f n2w = v2.normal * iw2;
+
+		simd::Vec3f h0w = v0.halfVector * iw0;
+		simd::Vec3f h1w = v1.halfVector * iw1;
+		simd::Vec3f h2w = v2.halfVector * iw2;
 
         int A0 = y1 - y2, B0 = x2 - x1;
         int A1 = y2 - y0, B1 = x0 - x2;
@@ -269,6 +296,9 @@ namespace AC_Engine
         simd::Vec3f dnwdx = (A0 * n0w + A1 * n1w + A2 * n2w) * invArea;
         simd::Vec3f dnwdy = (B0 * n0w + B1 * n1w + B2 * n2w) * invArea;
 
+		simd::Vec3f dhwdx = (A0 * h0w + A1 * h1w + A2 * h2w) * invArea;
+		simd::Vec3f dhwdy = (B0 * h0w + B1 * h1w + B2 * h2w) * invArea;
+
         float diwdx = (A0 * iw0 + A1 * iw1 + A2 * iw2) * invArea;
         float diwdy = (B0 * iw0 + B1 * iw1 + B2 * iw2) * invArea;
 
@@ -286,6 +316,7 @@ namespace AC_Engine
         float row_vw = init_e0 * v0w + init_e1 * v1w + init_e2 * v2w;
         float row_iw = init_e0 * iw0 + init_e1 * iw1 + init_e2 * iw2;
         simd::Vec3f row_nw = init_e0 * n0w + init_e1 * n1w + init_e2 * n2w;
+		simd::Vec3f row_hw = init_e0 * h0w + init_e1 * h1w + init_e2 * h2w;
 
         for (int y = minY; y <= maxY; y++)
         {
@@ -298,6 +329,7 @@ namespace AC_Engine
             float vw = row_vw;
             float iw = row_iw;
             simd::Vec3f nw = row_nw;
+			simd::Vec3f hw = row_hw;
 
             bool inside = false;
 
@@ -308,6 +340,7 @@ namespace AC_Engine
                     if (inside) break;
                     e0 += A0; e1 += A1; e2 += A2;
                     z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+					hw += dhwdx;
                     continue;
                 }
                 inside = true;
@@ -317,12 +350,14 @@ namespace AC_Engine
                 {
                     e0 += A0; e1 += A1; e2 += A2;
                     z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+					hw += dhwdx;
                     continue;
                 }
 
                 float u = uw / iw;
                 float v = vw / iw;
                 simd::Vec3f n = (nw / iw).Normalize();
+				simd::Vec3f H = (hw / iw).Normalize();
 
                 float ndotl = std::max(0.f, n.Dot(light.dir));
                 float ndoth = std::clamp(n.Dot(H), 0.f, 1.f);
@@ -348,10 +383,12 @@ namespace AC_Engine
 
                 e0 += A0; e1 += A1; e2 += A2;
                 z += dzdx; uw += duwdx; vw += dvwdx; iw += diwdx; nw += dnwdx;
+				hw += dhwdx;
             }
 
             start_e0 += B0; start_e1 += B1; start_e2 += B2;
             row_z += dzdy; row_uw += duwdy; row_vw += dvwdy; row_iw += diwdy; row_nw += dnwdy;
+			row_hw += dhwdy;
         }
     }
 
@@ -371,25 +408,30 @@ namespace AC_Engine
         return (a << 24) | (b << 16) | (g << 8) | r;
     }
 
-    inline Vertex clipLerp(Vertex v0, Vertex v1, float t) {
+    inline Vertex clipLerp(const Vertex& v0, const Vertex& v1, float t, const simd::Vec3f& h0, const simd::Vec3f& h1, simd::Vec3f& outH) {
         Vertex r{};
         r.pos = v0.pos + t * (v1.pos - v0.pos);
         r.texCoord.first = v0.texCoord.first + t * (v1.texCoord.first - v0.texCoord.first);
         r.texCoord.second = v0.texCoord.second + t * (v1.texCoord.second - v0.texCoord.second);
         r.normal = v0.normal + t * (v1.normal - v0.normal);
-
+        
+		outH = h0 + t * (h1 - h0);
         return r;
     }
 
-    void Renderer::clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out)
+    void Renderer::clipTriangle(const std::vector<Vertex>& in, const std::vector<simd::Vec3f>& inh, std::vector<Vertex>& out, std::vector<simd::Vec3f>& outH)
     {
         std::vector<Vertex> poly{};
+		std::vector<simd::Vec3f> polyH{};
         int n{};
 
         for (int i = 0; i < 3; i++)
         {
             Vertex a = in[i];
             Vertex b = in[(i + 1) % 3];
+			simd::Vec3f ha = inh[i];
+			simd::Vec3f hb = inh[(i + 1) % 3];
+
             float da = a.pos.getZ() + a.pos.getW();
             float db = b.pos.getZ() + b.pos.getW();
             bool a_in = da >= 0.0f;
@@ -398,46 +440,37 @@ namespace AC_Engine
             if (a_in && b_in)
             {
                 poly.push_back(b);
+				polyH.push_back(hb);
                 n++;
             }
             else if (a_in && !b_in)
             {
                 float t = da / (da - db);
-                poly.push_back(clipLerp(a, b, t));
+				simd::Vec3f interpolatedH;
+                poly.push_back(clipLerp(a, b, t, ha, hb, interpolatedH));
+				polyH.push_back(interpolatedH);
                 n++;
             }
             else if (!a_in && b_in)
             {
                 float t = da / (da - db);
-                poly.push_back(clipLerp(a, b, t));
+                simd::Vec3f interpolatedH;
+                poly.push_back(clipLerp(a, b, t, ha, hb, interpolatedH));
+                polyH.push_back(interpolatedH);
                 poly.push_back(b);
+                polyH.push_back(hb);
                 n += 2;
-            }
-
-            if (n == 3) 
-            {
-                out.push_back(poly[0]);
-                out.push_back(poly[1]);
-                out.push_back(poly[2]);
-            }
-            else if (n == 4)
-            {
-                out.push_back(poly[0]);
-                out.push_back(poly[1]);
-                out.push_back(poly[2]);
-
-                out.push_back(poly[0]);
-                out.push_back(poly[2]);
-                out.push_back(poly[3]);
             }
         }
         if (poly.size() >= 3) 
         {
             out.push_back(poly[0]); out.push_back(poly[1]); out.push_back(poly[2]);
+            outH.push_back(polyH[0]); outH.push_back(polyH[1]); outH.push_back(polyH[2]);
         }
         if (poly.size() == 4) 
         {
             out.push_back(poly[0]); out.push_back(poly[2]); out.push_back(poly[3]);
+            outH.push_back(polyH[0]); outH.push_back(polyH[2]); outH.push_back(polyH[3]);
         }
     }
 
@@ -482,7 +515,7 @@ namespace AC_Engine
                 int sx = static_cast<int>((clip.getX() * inv + 1.0f) * 0.5f * width);
                 int sy = static_cast<int>((1.0f - (clip.getY() * inv + 1.0f) * 0.5f) * height);
                 float sz = clip.getZ() * inv;
-                return { sx, sy, sz, inv, uv, {0.f, 0.f, 1.f} };
+                return { sx, sy, sz, inv, uv, {0.f, 0.f, 1.f}, m_light.dir };
                 };
 
             ScreenVertex sv0 = toScreenVertex(c0, { 0.f, 0.f });

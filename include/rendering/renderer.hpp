@@ -35,6 +35,7 @@ namespace AC_Engine
         float invW;
         std::pair<float, float> uv;
         simd::Vec3f normal;
+		simd::Vec3f halfVector;
     };
 
     struct RenderTriangle {
@@ -64,7 +65,7 @@ namespace AC_Engine
             int tileMinY, int tileMaxY);
 
 		uint32_t color_phong(uint32_t color, float diffuse, float specular);
-        void clipTriangle(const std::vector<Vertex>& in, std::vector<Vertex>& out);
+        void clipTriangle(const std::vector<Vertex>& in, const std::vector<simd::Vec3f>& inh, std::vector<Vertex>& out, std::vector<simd::Vec3f>& outH);
 
         FrameBuffer& m_frameBuffer;
         MaterialLibrary& m_materialLibrary;

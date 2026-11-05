@@ -1,13 +1,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "window.hpp"
-#include "frameBuffer.hpp"
-#include "renderer.hpp"
+#include "rendering/frameBuffer.hpp"
+#include "rendering/renderer.hpp"
 #include "gui.hpp"
 
 #include "meshManager.hpp"
-#include "texture.hpp"
-#include "font.hpp"
-#include "material.hpp"
+#include "rendering/texture.hpp"
+#include "rendering/font.hpp"
+#include "rendering/material.hpp"
 #include "Particle.hpp"
 #include "proceduralTerrain.hpp"
 #include "moveCamera.hpp"
