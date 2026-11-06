@@ -90,7 +90,7 @@ int main() {
     mat.buildSpecLut();
 
     transparentMat.diffuseMap = std::make_shared<Texture>(texture);
-    transparentMat.shininess  = 32.f;
+    transparentMat.shininess  = 255.f;
     transparentMat.opacity = 0.5f; // Set opacity to 50% for transparency
     transparentMat.buildSpecLut();
 
@@ -138,7 +138,6 @@ int main() {
         const std::string fpsText = "FPS: " + std::to_string(static_cast<int>(1.0f / engineClock.getDeltaTime()));
         customUI.drawText(frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(),fpsText.c_str(), 10.0f, 20.0f);
         customUI.drawImage(PROJECT_DIR + "/assets/spot_texture.png"s, frameBuffer.getUiPixelsRaw(), window.getWidth() / 4, window.getHeight(), 10.0f, 10.0f, 0.1f);
-        gui.newFrame();
 
 		particlePool.updateEmitters(registry, engineClock.getDeltaTime());
 		particlePool.updateParticles(engineClock.getDeltaTime());

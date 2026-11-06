@@ -426,12 +426,13 @@ namespace AC_Engine
 
                 uint32_t out = (to8(b) << 16) | (to8(g) << 8) | to8(r);
 
-                m_frameBuffer.getZBuffer()[idx] = z;
+                if (mat.opacity >= 1.0f) m_frameBuffer.getZBuffer()[idx] = z;
 
                 if (mat.opacity < 1.0f)
                 {
                     uint32_t src = ((uint32_t)(mat.opacity * 255.f + 0.5f) << 24) | out;
-                    uint32_t dst = m_frameBuffer.getTransparentPixels()[idx];
+                    const int flippedIdx = (m_frameBuffer.getHeight() - 1 - y) * m_frameBuffer.getWidth() + x;
+                    uint32_t dst = m_frameBuffer.getTransparentPixels()[flippedIdx];
                     m_frameBuffer.setTransparentPixel(x, y, blendOver(src, dst));
                 }
                 else
